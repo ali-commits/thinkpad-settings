@@ -1,0 +1,2202 @@
+[
+ {
+  "name": "AMTControl",
+  "category": "Firmware & Management",
+  "label": "Intel AMT (out-of-band remote management)",
+  "description": "Controls Intel Active Management Technology, the remote-management engine that lets an administrator power on, KVM into or re-image the machine over the network independently of the installed OS. On a personally owned Fedora laptop it does nothing useful and leaving it Disabled is normal; it has no effect on how Linux itself runs.",
+  "risk": "danger",
+  "risk_note": "PermanentlyDisable is a one-way fuse — AMT can never be re-enabled on this machine afterwards, and on a company-managed ThinkPad disabling it cuts off the remote administration IT relies on",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   },
+   {
+    "value": "PermanentlyDisable",
+    "label": "Permanently disable (irreversible)"
+   }
+  ]
+ },
+ {
+  "name": "AbsolutePersistenceModuleActivation",
+  "category": "Security",
+  "label": "Absolute Persistence module (Computrace anti-theft)",
+  "description": "Activates the firmware module that lets Absolute's anti-theft/endpoint agent reinstall itself into the operating system even after a disk wipe or OS reinstall. The agent is Windows-only, so on Fedora the module has nothing to inject and the setting has no practical effect on day-to-day Linux use.",
+  "risk": "danger",
+  "risk_note": "PermanentlyDisable is irreversible — the module is removed from the firmware for good and no Absolute deployment or corporate recovery can ever be restored on this machine",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   },
+   {
+    "value": "PermanentlyDisable",
+    "label": "Permanently disable (irreversible)"
+   }
+  ]
+ },
+ {
+  "name": "AdaptiveThermalManagementAC",
+  "category": "Power & Thermal",
+  "label": "Adaptive thermal management scheme (on AC power)",
+  "description": "Picks the firmware's thermal and fan policy while the laptop is plugged in: Maximize performance lets the CPU run hotter with a more aggressive fan to reduce throttling, Balanced trades some sustained clock speed for quieter, cooler operation. On Fedora this sits underneath the OS — GNOME's power modes and thermald still work either way — and the audible difference is fan behaviour under load.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "MaximizePerformance",
+    "label": "Maximize performance"
+   },
+   {
+    "value": "Balanced",
+    "label": "Balanced"
+   }
+  ]
+ },
+ {
+  "name": "AdaptiveThermalManagementBattery",
+  "category": "Power & Thermal",
+  "label": "Adaptive thermal management scheme (on battery)",
+  "description": "The same firmware thermal/fan policy choice as the AC setting, but applied while running on battery. Balanced is the usual choice here; Maximize performance keeps clocks higher on battery at the cost of more heat, fan noise and battery drain in Fedora.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "MaximizePerformance",
+    "label": "Maximize performance"
+   },
+   {
+    "value": "Balanced",
+    "label": "Balanced"
+   }
+  ]
+ },
+ {
+  "name": "AlarmDate",
+  "category": "Wake & Alarms",
+  "label": "Wake-up alarm date",
+  "description": "Free-text date (MM/DD/YYYY) for the firmware's scheduled power-on alarm; it only does anything when the wake-on-alarm option is enabled and set to a single-date schedule. Fedora's own timed wakeups (rtcwake, systemd timers with WakeSystem=true) program the RTC directly and do not depend on this value.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": []
+ },
+ {
+  "name": "AlarmDayofWeek",
+  "category": "Wake & Alarms",
+  "label": "Wake-up alarm day of week",
+  "description": "Selects which weekday the firmware's scheduled power-on alarm fires on, for a weekly rather than one-off schedule. Like the other alarm fields it is inert unless wake-on-alarm is enabled, and it is separate from anything Fedora schedules through the RTC.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Sunday",
+    "label": "Sunday"
+   },
+   {
+    "value": "Monday",
+    "label": "Monday"
+   },
+   {
+    "value": "Tuesday",
+    "label": "Tuesday"
+   },
+   {
+    "value": "Wednesday",
+    "label": "Wednesday"
+   },
+   {
+    "value": "Thursday",
+    "label": "Thursday"
+   },
+   {
+    "value": "Friday",
+    "label": "Friday"
+   },
+   {
+    "value": "Saturday",
+    "label": "Saturday"
+   }
+  ]
+ },
+ {
+  "name": "AlarmTime",
+  "category": "Wake & Alarms",
+  "label": "Wake-up alarm time",
+  "description": "Free-text time of day (HH:MM:SS, 24-hour) at which the firmware's scheduled power-on alarm fires. It only takes effect when wake-on-alarm is enabled, and note the firmware clock is normally UTC on a Fedora install, so this is not necessarily your local wall-clock time.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": []
+ },
+ {
+  "name": "Allow3rdPartyUEFICA",
+  "category": "Security",
+  "label": "Allow third-party UEFI CA in Secure Boot",
+  "description": "Controls whether Microsoft's third-party UEFI certificate authority is trusted in the Secure Boot database. Fedora's shim bootloader is signed by exactly that CA, so if you ever turn Secure Boot back on this must be Enabled or the firmware will reject Fedora's bootloader. While Secure Boot is off, this setting has no immediate effect.",
+  "risk": "caution",
+  "risk_note": "if Secure Boot is later enabled while this is Disabled, Fedora's third-party-signed shim fails validation and the machine refuses to boot until you re-enter BIOS setup",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "AlwaysOnUSB",
+  "category": "Devices & Ports",
+  "label": "Always On USB port power",
+  "description": "Keeps the Always On USB port (the connector marked with a small battery icon) supplying power while the ThinkPad is asleep or shut down, so you can charge a phone or headset from it. It is a charging feature only and changes nothing about how USB devices behave once Fedora is running, though a sleeping or powered-off laptop will slowly drain its own battery into whatever is plugged in.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "BIOSPasswordAtBootDeviceList",
+  "category": "Passwords",
+  "label": "Require password for the F12 boot menu",
+  "description": "When Enabled and a supervisor or power-on password exists, pressing F12 for the one-time boot device menu demands that password first. With no BIOS password set it does nothing; it becomes meaningful only once you set one.",
+  "risk": "caution",
+  "risk_note": "with a password set, you lose quick F12 access to boot a USB rescue or install stick unless you can supply it — recoverable by turning the option off in BIOS setup",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "BIOSPasswordAtReboot",
+  "category": "Passwords",
+  "label": "Require password on restart, not just cold boot",
+  "description": "When Enabled and a power-on or supervisor password exists, the firmware asks for it on every warm restart as well as on a cold power-on. That matters on Linux because a remote `systemctl reboot`, an unattended kernel update or a scheduled reboot will stop at the firmware prompt instead of coming back up.",
+  "risk": "caution",
+  "risk_note": "a remote or unattended reboot hangs at the firmware password prompt until someone types the password at the physical keyboard",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "BIOSPasswordAtUnattendedBoot",
+  "category": "Passwords",
+  "label": "Require password on unattended boot (Wake on LAN, alarm)",
+  "description": "Decides whether the power-on password is demanded when the machine starts itself without a person present — Wake on LAN, an RTC alarm or a scheduled power-on. Enabled stops such a wake at the password prompt so Fedora never boots; Disabled lets unattended wakes boot straight into Fedora while a normal manual power-on still asks.",
+  "risk": "caution",
+  "risk_note": "with a power-on password set, Enabled breaks Wake-on-LAN and timed wakes because the machine waits at the prompt; Disabled lets anyone who can trigger a wake event boot the machine without the password",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "BIOSSetupConfigurations",
+  "category": "Firmware & Management",
+  "label": "BIOS setup configurations",
+  "description": "A Lenovo setup/administration toggle whose exact scope is not documented by the think_lmi driver — the driver exposes only the name and a Disable/Enable pair, so all that is certain is that it turns some BIOS setup configuration behaviour on or off. Because it sits in the firmware-administration area rather than in a normal user-facing menu, treat it as unknown and leave it as-is unless Lenovo's own documentation for this exact model explains it.",
+  "risk": "caution",
+  "risk_note": "undocumented scope — it may affect access to or handling of BIOS setup itself, so verify against Lenovo's documentation for this model before touching it",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "BIOSUpdateByEndUsers",
+  "category": "Firmware & Management",
+  "label": "Allow BIOS flash updates by end users",
+  "description": "Lenovo's \"Flash BIOS Updating by End-Users\" option: when Disabled, firmware flashing is restricted to an administrator holding the supervisor password. On Fedora, disabling it is what breaks `fwupdmgr update` and GNOME Software's UEFI capsule updates for the BIOS and Management Engine firmware.",
+  "risk": "caution",
+  "risk_note": "disabling it blocks fwupd/LVFS firmware updates from inside Fedora until you re-enable it in BIOS setup",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "BlockSIDAuthentication",
+  "category": "Security",
+  "label": "Block SID authentication (self-encrypting drive lockout)",
+  "description": "When Enabled, the firmware issues the TCG Opal \"Block SID\" command at every boot, so nothing running afterwards can take ownership of a self-encrypting NVMe drive until the next power cycle. On Fedora that deliberately prevents tools such as sedutil-cli from initialising Opal hardware encryption; disabling it opens drive ownership to any root-level software, malware included.",
+  "risk": "danger",
+  "risk_note": "with this off, software can claim the drive's SID and set a drive password you do not know, which can put the data on the SSD permanently out of reach",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "BluetoothAccess",
+  "category": "Network",
+  "label": "Bluetooth radio access",
+  "description": "Enables or disables the Bluetooth side of the combo Wi-Fi/Bluetooth card at the firmware level. Disabled makes the adapter vanish completely from Fedora — nothing in `rfkill list` or `bluetoothctl` and no Bluetooth panel in GNOME Settings — so BT mice, keyboards and headsets stop working until it is re-enabled in BIOS setup; Wi-Fi is controlled separately and is unaffected.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "BootDeviceListF12Option",
+  "category": "Boot & Startup",
+  "label": "F12 one-time boot menu",
+  "description": "Controls whether pressing F12 during power-on brings up the one-time boot device list. With it Disabled you can no longer pick a boot device on the fly, so booting a Fedora USB installer or rescue stick means going into BIOS setup and editing the permanent boot order first.",
+  "risk": "caution",
+  "risk_note": "losing the F12 menu makes emergency booting from USB media awkward; recoverable by re-enabling it from BIOS setup (F1)",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "BootDisplayDevice",
+  "category": "Input & Display",
+  "label": "Boot-time display output",
+  "description": "Chooses which screen the firmware draws on before the OS graphics driver loads — the built-in panel or an attached external monitor — covering POST, the BIOS setup screens and usually the GRUB menu. Once Fedora is up, GNOME/Wayland manages displays itself and this setting no longer applies.",
+  "risk": "caution",
+  "risk_note": "if set to the external display with no monitor connected, POST and BIOS setup may not appear on the built-in screen, making it hard to change the setting back",
+  "value_labels": [
+   {
+    "value": "LCD",
+    "label": "Built-in laptop screen"
+   },
+   {
+    "value": "ExternalDisplay",
+    "label": "External display"
+   }
+  ]
+ },
+ {
+  "name": "BootMode",
+  "category": "Boot & Startup",
+  "label": "Power-on self-test display mode",
+  "description": "Lenovo's Startup \"Boot Mode\": Quick shows the ThinkPad logo during the power-on self-test, while Diagnostics shows the POST/diagnostic text messages instead. It only changes what the firmware puts on screen before the bootloader runs and has no effect on Fedora once booted — Diagnostics is worth using only when chasing a hardware fault.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Quick",
+    "label": "Quick (Lenovo logo screen)"
+   },
+   {
+    "value": "Diagnostics",
+    "label": "Diagnostics (show POST messages)"
+   }
+  ]
+ },
+ {
+  "name": "BootOrder",
+  "category": "Boot & Startup",
+  "label": "Boot device priority order",
+  "description": "The firmware's boot priority list, written as device codes separated by colons and tried in that order. This is what decides whether the machine lands in Fedora's GRUB, a USB installer or a network boot prompt at power-on.",
+  "risk": "caution",
+  "risk_note": "demoting or removing the internal NVMe entry, or writing a malformed list, can leave the machine unable to find Fedora's bootloader until the order is corrected in BIOS setup (F1)",
+  "value_labels": [
+   {
+    "value": "HDD0",
+    "label": "Internal SATA drive 0"
+   },
+   {
+    "value": "HDD1",
+    "label": "Internal SATA drive 1"
+   },
+   {
+    "value": "HDD2",
+    "label": "Internal SATA drive 2"
+   },
+   {
+    "value": "HDD3",
+    "label": "Internal SATA drive 3"
+   },
+   {
+    "value": "HDD4",
+    "label": "Internal SATA drive 4"
+   },
+   {
+    "value": "PXEBOOT",
+    "label": "PXE network boot"
+   },
+   {
+    "value": "ATAPICD0",
+    "label": "Optical drive 0 (ATAPI CD/DVD)"
+   },
+   {
+    "value": "ATAPICD1",
+    "label": "Optical drive 1 (ATAPI CD/DVD)"
+   },
+   {
+    "value": "ATAPICD2",
+    "label": "Optical drive 2 (ATAPI CD/DVD)"
+   },
+   {
+    "value": "USBFDD",
+    "label": "USB floppy drive"
+   },
+   {
+    "value": "USBCD",
+    "label": "USB optical drive (CD/DVD)"
+   },
+   {
+    "value": "USBHDD",
+    "label": "USB hard disk / flash drive"
+   },
+   {
+    "value": "OtherHDD",
+    "label": "Other hard drive"
+   },
+   {
+    "value": "OtherCD",
+    "label": "Other optical drive"
+   },
+   {
+    "value": "NVMe0",
+    "label": "Internal NVMe SSD"
+   },
+   {
+    "value": "NVMe1",
+    "label": "Second internal NVMe SSD"
+   },
+   {
+    "value": "HTTPSBOOT",
+    "label": "UEFI HTTPS network boot"
+   },
+   {
+    "value": "LENOVOCLOUD",
+    "label": "Lenovo cloud recovery"
+   },
+   {
+    "value": "ON-PREMISE",
+    "label": "On-premise recovery server"
+   },
+   {
+    "value": "NODEV",
+    "label": "No device"
+   }
+  ]
+ },
+ {
+  "name": "BootOrderLock",
+  "category": "Boot & Startup",
+  "label": "Lock boot order against OS changes",
+  "description": "Freezes the UEFI boot priority list to whatever BIOS setup currently holds so the operating system cannot add, remove or reorder boot entries. On Fedora that means efibootmgr, grub2-install, shim updates and OS installers can no longer register or promote their own entry, which usually shows up as a bootloader install that appears to succeed but changes nothing.",
+  "risk": "danger",
+  "risk_note": "the OS can no longer create or reorder UEFI boot entries, so a bootloader repair, distro reinstall or disk migration can leave the machine with no working boot entry and no way for Linux to fix it",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "BootTimeExtension",
+  "category": "Boot & Startup",
+  "label": "Boot time extension",
+  "description": "Adds a fixed extra delay during POST so slow-to-initialize hardware — docks, external displays, some USB or network adapters — has time to be enumerated before the firmware builds its boot device list. On Fedora this only lengthens the wait before GRUB appears; it changes nothing once the OS is running.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled (no extra delay)"
+   },
+   {
+    "value": "1",
+    "label": "1 second"
+   },
+   {
+    "value": "2",
+    "label": "2 seconds"
+   },
+   {
+    "value": "3",
+    "label": "3 seconds"
+   },
+   {
+    "value": "5",
+    "label": "5 seconds"
+   },
+   {
+    "value": "10",
+    "label": "10 seconds"
+   }
+  ]
+ },
+ {
+  "name": "BottomCoverTamperDetected",
+  "category": "Security",
+  "label": "Bottom cover tamper detection",
+  "description": "Arms the chassis intrusion switch: if the bottom cover is removed while the machine is off, the firmware records it and challenges you at the next power-on. It is a supervisor-password feature — the alert is cleared by entering that password — and it is invisible to and unmanageable from Fedora.",
+  "risk": "danger",
+  "risk_note": "once triggered (including by legitimate RAM/SSD service), the machine stops at power-on until the supervisor password is entered to clear the alert",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "CPUPowerManagement",
+  "category": "Power & Thermal",
+  "label": "CPU power management (idle clock stop)",
+  "description": "Lets the firmware stop the processor clock automatically when there is no system activity — the classic ThinkPad halt-clock power-saving option. Leave it enabled: with it off the CPU never settles into its low-power idle state, so a Fedora laptop idles hotter and drains the battery faster for no benefit.",
+  "risk": "caution",
+  "risk_note": "disabling it raises idle power draw and temperature with no upside on Linux",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "ChargeInBatteryMode",
+  "category": "Devices & Ports",
+  "label": "Charge in battery mode (Always On USB)",
+  "description": "Sub-option of Always On USB: allows the powered USB port to keep charging a phone, headset or other device while the ThinkPad is off, hibernating or suspended and running on battery. The embedded controller handles it below the OS, so it applies regardless of what Fedora is doing — including when the machine is fully shut down.",
+  "risk": "caution",
+  "risk_note": "a device left plugged into the Always On USB port will drain the laptop's own battery while it is powered off",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "CoolQuietOnLap",
+  "category": "Power & Thermal",
+  "label": "Cool and quiet on lap",
+  "description": "Selects a cooler, quieter thermal profile intended for on-lap use, keeping chassis surface temperature and fan noise down. The firmware applies this beneath the OS, so it holds no matter which Fedora power profile you use (power-profiles-daemon, TLP); the trade is less sustained performance under long heavy loads.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "DataExecutionPrevention",
+  "category": "Security",
+  "label": "Data execution prevention (Intel Execute Disable / NX bit)",
+  "description": "Exposes the CPU's NX (Execute Disable) bit, which lets the kernel mark memory pages as non-executable. The Fedora kernel and hardened userspace depend on this for W^X protection, so it should stay enabled — turning it off silently removes a foundational exploit mitigation with no visible symptom.",
+  "risk": "caution",
+  "risk_note": "removes the NX memory protection the kernel and userspace hardening rely on, weakening the system with no obvious sign",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "DeviceGuard",
+  "category": "Security",
+  "label": "Device Guard (Windows virtualization-based security)",
+  "description": "A Windows-oriented master switch that turns on and then pins a group of related firmware security settings (Secure Boot, virtualization/VT-d, TPM) for Windows Device Guard and Credential Guard. It offers nothing to Fedora, and because it forces Secure Boot on and locks the related options it can leave a machine that boots with Secure Boot off unable to start at all.",
+  "risk": "danger",
+  "risk_note": "forces Secure Boot on and pins related security settings, so a Fedora install that boots unsigned or third-party kernel modules can stop booting and the options cannot simply be flipped back",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "EfficientCores",
+  "category": "CPU & Virtualization",
+  "label": "Efficient cores (Alder Lake E-cores)",
+  "description": "Enables the efficiency cores of the 12th-gen hybrid CPU. Fedora's scheduler handles the P/E layout fine; switching them off leaves only the performance cores, which cuts multi-threaded throughput and changes the CPU count that compilers, container runtimes and VMs see.",
+  "risk": "caution",
+  "risk_note": "parallel workloads (builds, VMs, video encoding) lose a large fraction of available CPU, and the change is easy to misattribute to a software problem",
+  "value_labels": [
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   },
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   }
+  ]
+ },
+ {
+  "name": "EnergyEfficientTurbo",
+  "category": "Power & Thermal",
+  "label": "Energy efficient turbo",
+  "description": "Lets the processor pull turbo frequency back when the extra clocks would not actually finish the work sooner — stalled or memory-bound code — an Intel efficiency heuristic applied in hardware. Disabling it makes turbo more aggressive at the cost of more power and heat; Linux's intel_pstate driver has no visibility into or control over it.",
+  "risk": "caution",
+  "risk_note": "turning it off raises power draw and temperature, shortening battery runtime",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "EnhancedWindowsBiometricSecurity",
+  "category": "Security",
+  "label": "Enhanced Windows biometric security",
+  "description": "Binds the fingerprint sensor into the hardened path that Windows Hello Enhanced Sign-in Security expects, instead of presenting it as an ordinary device. There is no Fedora equivalent, and because it changes how the sensor is attached to the platform it can leave fprintd and GNOME fingerprint enrollment non-functional — leave it disabled on Linux.",
+  "risk": "caution",
+  "risk_note": "can stop the fingerprint reader from working with fprintd/GNOME under Fedora while providing no benefit there",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "EthernetLANAccess",
+  "category": "Network",
+  "label": "Built-in wired Ethernet access",
+  "description": "Turns the machine's built-in wired Ethernet controller on or off at the firmware level. Disabled, the NIC is never presented to Fedora at all — nothing in `ip link` or `lspci`, no PXE/network boot and no Wake on LAN — and the only way to get it back is BIOS setup.",
+  "risk": "caution",
+  "risk_note": "wired networking disappears completely from Linux and can only be restored by entering BIOS setup (F1)",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "FingerprintPasswordAuthentication",
+  "category": "Security",
+  "label": "Allow password instead of fingerprint at pre-boot",
+  "description": "Controls whether a typed password is still accepted at the firmware's pre-boot prompt when fingerprint authentication is in use. It only comes into play when a power-on or hard-disk password is set, and has no bearing on GDM login or your LUKS passphrase.",
+  "risk": "danger",
+  "risk_note": "with the password fallback removed, a failed, dirty or broken fingerprint reader can leave no way past the power-on prompt",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "FingerprintPredesktopAuthentication",
+  "category": "Security",
+  "label": "Fingerprint authentication at pre-boot",
+  "description": "Lets you satisfy the firmware's power-on password prompt with a fingerprint instead of typing it, before any OS loads. It is meaningless unless a power-on password is set, and it is entirely separate from Fedora's own fingerprint login (fprintd) and from LUKS unlock.",
+  "risk": "caution",
+  "risk_note": "only useful once a power-on password exists, and it makes getting into the machine depend on the reader unless password fallback stays enabled",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "FingerprintReaderAccess",
+  "category": "Devices & Ports",
+  "label": "Fingerprint reader access",
+  "description": "Hardware-level enable for the fingerprint sensor. Disabled, the device is not powered or enumerated at all, so it vanishes from `lsusb` and GNOME's Fingerprint Login option disappears; enabled is required for any fingerprint use, in the firmware or in Fedora.",
+  "risk": "caution",
+  "risk_note": "fingerprint login under GNOME stops working and the sensor is invisible to Linux until you re-enable it in BIOS setup (F1)",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "FingerprintSecurityMode",
+  "category": "Security",
+  "label": "Fingerprint security mode",
+  "description": "Sets how strict the fallback is when a fingerprint scan fails at the firmware's pre-boot prompt: Normal permits the ordinary power-on password, High tightens the fallback toward the supervisor password. This is firmware policy only — Fedora's own authentication is unaffected either way.",
+  "risk": "danger",
+  "risk_note": "High narrows the fallback to the supervisor password, so a failing reader combined with an unset or forgotten supervisor password can lock you out of the machine",
+  "value_labels": [
+   {
+    "value": "Normal",
+    "label": "Normal"
+   },
+   {
+    "value": "High",
+    "label": "High (stricter fallback)"
+   }
+  ]
+ },
+ {
+  "name": "FingerprintSingleTouchAuthentication",
+  "category": "Security",
+  "label": "Fingerprint single-touch authentication",
+  "description": "When pre-boot fingerprint authentication is in use, a single touch is meant to clear the firmware prompt and pass the result on to the operating system sign-in so you do not swipe twice. The OS half of that handoff is a Windows feature; on Fedora you will still authenticate separately at the GDM login screen.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "FnCtrlKeySwap",
+  "category": "Input & Display",
+  "label": "Swap Fn and Ctrl keys",
+  "description": "Exchanges the functions of the bottom-left Fn key and the left Ctrl key, putting Ctrl in the corner as on most non-ThinkPad laptops. The swap happens in the keyboard controller before the kernel sees anything, so no keyd or xkb remap is needed and it behaves identically in GRUB, a TTY and Wayland.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "FnKeyAsPrimary",
+  "category": "Input & Display",
+  "label": "Fn key as primary function",
+  "description": "Sets the default behaviour of the top row — plain F1–F12 versus the printed special functions (volume, brightness, mic mute) — with Fn selecting the other set; it is the persistent form of the Fn Lock toggle (Fn+Esc). The embedded controller does the translation, so Fedora simply receives whichever keycodes result.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "FnSticky",
+  "category": "Input & Display",
+  "label": "Sticky Fn key",
+  "description": "Makes Fn latch: press and release it once, then press the function key, instead of holding both together. It is handled in the keyboard controller so it applies everywhere including GRUB and the text console, and is independent of GNOME's own Sticky Keys accessibility setting.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "HardDiskPasswordControl",
+  "category": "Passwords",
+  "label": "Hard disk password control",
+  "description": "Gates the firmware's drive-level (ATA/NVMe) password feature — the lock that lives inside the SSD itself rather than in the operating system. It does not set a password on its own, but it is what makes the hard-disk password items available; this is completely separate from Fedora's LUKS disk encryption and does not replace it.",
+  "risk": "danger",
+  "risk_note": "it enables a drive-level password that, if forgotten, cannot be reset by Lenovo or cleared by reinstalling — the contents of the SSD become permanently unrecoverable",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "HyperThreadingTechnology",
+  "category": "CPU & Virtualization",
+  "label": "Intel Hyper-Threading (SMT)",
+  "description": "Presents two logical CPUs per performance core to the operating system. Turning it off removes the second thread from each P-core, lowering the logical CPU count Fedora reports in /proc/cpuinfo and costing multi-threaded throughput; it is sometimes done to harden against cross-thread side-channel attacks, though the kernel can achieve the same at runtime with the `nosmt` boot parameter.",
+  "risk": "caution",
+  "risk_note": "multi-threaded performance drops and the visible CPU count changes, which can quietly upset thread pools, VM sizing and benchmarks",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "IPv4NetworkStack",
+  "category": "Network",
+  "label": "UEFI IPv4 network stack",
+  "description": "Loads the firmware's own IPv4 protocol stack, which is what UEFI PXE and HTTP(S) boot use before any operating system starts. It has no bearing on networking once Fedora's kernel and NetworkManager take over, so leave it off unless you genuinely boot this laptop from the network.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "IPv6NetworkStack",
+  "category": "Network",
+  "label": "UEFI IPv6 network stack",
+  "description": "The IPv6 counterpart to the firmware's pre-boot network stack, used only for UEFI PXE/HTTP boot over IPv6. Fedora's own IPv6 support is entirely independent of this setting, so turning it off does not affect IPv6 connectivity in the running system.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "IntegratedAudioAccess",
+  "category": "Devices & Ports",
+  "label": "Integrated audio access",
+  "description": "Enables or disables the built-in audio controller at the firmware level. Disabled, the device never appears on the PCI bus at all, so Fedora's SOF/snd_hda drivers bind to nothing and PipeWire shows no speakers, no headphone jack and no internal analogue path.",
+  "risk": "caution",
+  "risk_note": "all built-in sound vanishes from Linux entirely, which looks like a driver or PipeWire fault rather than a firmware setting",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "IntegratedCameraAccess",
+  "category": "Devices & Ports",
+  "label": "Integrated camera access",
+  "description": "Enables or disables the built-in webcam in firmware. Disabled, the UVC device never enumerates, so no /dev/video node is created and GNOME apps simply report no camera — a harder privacy guarantee than the ThinkShutter slider, but one you can only undo from BIOS setup.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "IntelligentCoolingBoost",
+  "category": "Power & Thermal",
+  "label": "Intelligent Cooling Boost",
+  "description": "A Lenovo Intelligent Cooling option that changes how the platform's thermal and power boost behaviour is applied; the attribute exposes only an on/off switch and Lenovo does not document the exact policy behind it. On Fedora, everyday performance and thermal mode switching already runs through the ACPI platform profile (GNOME power modes / power-profiles-daemon), so this firmware toggle is rarely the knob you want.",
+  "risk": "caution",
+  "risk_note": "can change fan behaviour and sustained CPU power in ways easily misattributed to the kernel or power-profiles-daemon",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "InternalStorageTamper",
+  "category": "Security",
+  "label": "Internal storage tamper detection",
+  "description": "Has the firmware detect and report when an internal storage device — here the NVMe SSD — is removed or swapped while the machine is powered off. It does nothing during normal Fedora operation; it only acts at the next power-on after the internal drive has been changed.",
+  "risk": "caution",
+  "risk_note": "after any SSD swap, upgrade or reseat the next boot flags tampering and can demand acknowledgement (or a supervisor password) before it will continue",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "KernelDMAProtection",
+  "category": "Security",
+  "label": "Kernel DMA Protection",
+  "description": "Uses the chipset IOMMU (Intel VT-d) to block DMA from externally attached PCIe/Thunderbolt hardware until the OS authorizes it, defending against DMA attacks through the USB-C ports. It depends on VT-d being enabled; recent Fedora kernels support it, but with pre-boot DMA protection active some Thunderbolt docks and eGPUs need explicit authorization and misbehaving devices may not attach at all.",
+  "risk": "caution",
+  "risk_note": "does nothing if VT-d is off, and once enabled some Thunderbolt/USB4 devices will not attach until they are authorized",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "KeyboardBeep",
+  "category": "Input & Display",
+  "label": "Keyboard beep",
+  "description": "Controls whether the embedded controller emits an audible beep for certain keyboard events, such as pressing an unsupported Fn key combination. It is firmware-level feedback only and is unaffected by Fedora's volume or sound settings.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "KeyboardLayout",
+  "category": "Input & Display",
+  "label": "Keyboard layout (pre-boot)",
+  "description": "Tells the firmware which physical keyboard layout to assume on its own screens — BIOS setup and any pre-boot password prompt. It has no effect inside Fedora, where GNOME and localectl decide the layout, and it does not change how you type your LUKS passphrase in the initramfs; it matters mainly if you later set a BIOS password and need to type it correctly at power-on.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "English_US",
+    "label": "English (US)"
+   },
+   {
+    "value": "CanadianFrenchMultilingual",
+    "label": "Canadian French (multilingual)"
+   },
+   {
+    "value": "CanadianFrench",
+    "label": "Canadian French"
+   },
+   {
+    "value": "Spanish_LA",
+    "label": "Spanish (Latin America)"
+   },
+   {
+    "value": "Portuguese_BR",
+    "label": "Portuguese (Brazil)"
+   },
+   {
+    "value": "Belgian",
+    "label": "Belgian"
+   },
+   {
+    "value": "Danish",
+    "label": "Danish"
+   },
+   {
+    "value": "Spanish",
+    "label": "Spanish (Spain)"
+   },
+   {
+    "value": "French",
+    "label": "French"
+   },
+   {
+    "value": "German",
+    "label": "German"
+   },
+   {
+    "value": "Hungarian",
+    "label": "Hungarian"
+   },
+   {
+    "value": "Icelandic",
+    "label": "Icelandic"
+   },
+   {
+    "value": "Italian",
+    "label": "Italian"
+   },
+   {
+    "value": "Norwegian",
+    "label": "Norwegian"
+   },
+   {
+    "value": "Portuguese",
+    "label": "Portuguese (Portugal)"
+   },
+   {
+    "value": "Slovenian",
+    "label": "Slovenian"
+   },
+   {
+    "value": "Swedish",
+    "label": "Swedish"
+   },
+   {
+    "value": "Swiss",
+    "label": "Swiss"
+   },
+   {
+    "value": "Turkish",
+    "label": "Turkish (Q layout)"
+   },
+   {
+    "value": "English_UK",
+    "label": "English (UK)"
+   },
+   {
+    "value": "Japanese",
+    "label": "Japanese"
+   },
+   {
+    "value": "Korean",
+    "label": "Korean"
+   },
+   {
+    "value": "TraditionalChinese",
+    "label": "Traditional Chinese"
+   },
+   {
+    "value": "Turkish-F",
+    "label": "Turkish (F layout)"
+   },
+   {
+    "value": "Estonian",
+    "label": "Estonian"
+   },
+   {
+    "value": "Finnish",
+    "label": "Finnish"
+   },
+   {
+    "value": "Czech",
+    "label": "Czech"
+   }
+  ]
+ },
+ {
+  "name": "LenovoCloudServices",
+  "category": "Firmware & Management",
+  "label": "Lenovo cloud services",
+  "description": "Enables the firmware-side Lenovo cloud service that backs the \"Lenovo Cloud\" pre-boot recovery/boot entry, which fetches a Lenovo-supplied recovery image over the network. It is a Windows recovery path that Fedora never uses, so disabling it only removes that pre-boot option and the firmware's reason to contact Lenovo.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "LockBIOSSetting",
+  "category": "Security",
+  "label": "Lock BIOS settings",
+  "description": "Locks the BIOS configuration so settings can no longer be modified — neither in F1 setup nor through the think_lmi sysfs interface Fedora exposes. It is meant for managed fleets where a supervisor password controls unlocking again.",
+  "risk": "danger",
+  "risk_note": "locks the entire setup menu against changes, and without a supervisor password set you may have no way to unlock it again",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "MACAddressPassThrough",
+  "category": "Network",
+  "label": "MAC address pass-through",
+  "description": "Makes a USB-C/Thunderbolt dock or USB Ethernet adapter present the laptop's own built-in MAC address instead of the adapter's, so the machine keeps one identity for DHCP reservations, 802.1X and Wake on LAN. In Fedora the docked interface then reports that MAC, which changes the DHCP lease it gets and any MAC-based matching in your NetworkManager profiles.",
+  "risk": "caution",
+  "risk_note": "the dock's Ethernet MAC changes, so DHCP reservations, 802.1X/NAC access rules and MAC-matched NetworkManager connections can silently stop matching",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled (use the system MAC address)"
+   },
+   {
+    "value": "Second",
+    "label": "Use the system's second MAC address"
+   }
+  ]
+ },
+ {
+  "name": "MicrophoneAccess",
+  "category": "Devices & Ports",
+  "label": "Microphone access",
+  "description": "Enables or disables the built-in microphones in firmware. Disabled, no internal capture device is exposed to Linux at all, so PipeWire and GNOME show no internal mic and nothing can record from it; USB and headset microphones are unaffected.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "MinimumPasswordLength",
+  "category": "Passwords",
+  "label": "Minimum password length",
+  "description": "Sets the shortest BIOS password the firmware will accept when one is created or changed; \"Disable\" enforces no minimum at all. This is a policy for future passwords only — it never creates a password, does not touch existing ones, and has no effect on anything inside Fedora.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "No minimum (disabled)"
+   },
+   {
+    "value": "4",
+    "label": "4 characters"
+   },
+   {
+    "value": "5",
+    "label": "5 characters"
+   },
+   {
+    "value": "6",
+    "label": "6 characters"
+   },
+   {
+    "value": "7",
+    "label": "7 characters"
+   },
+   {
+    "value": "8",
+    "label": "8 characters"
+   },
+   {
+    "value": "9",
+    "label": "9 characters"
+   },
+   {
+    "value": "10",
+    "label": "10 characters"
+   },
+   {
+    "value": "11",
+    "label": "11 characters"
+   },
+   {
+    "value": "12",
+    "label": "12 characters"
+   }
+  ]
+ },
+ {
+  "name": "NetworkBoot",
+  "category": "Boot & Startup",
+  "label": "Network boot device",
+  "description": "Selects which device the firmware boots from when the machine is started by a network/Wake-on-LAN event, separately from the normal boot order. Left on the internal NVMe drive, a remotely woken machine comes up in your Fedora install; pointed at PXE or HTTPS boot it would instead try to load an image from a server.",
+  "risk": "caution",
+  "risk_note": "if set to a network entry, a Wake-on-LAN-triggered power-on will no longer boot Fedora from the internal SSD",
+  "value_labels": [
+   {
+    "value": "HDD0",
+    "label": "Internal hard disk 1 (HDD0)"
+   },
+   {
+    "value": "HDD1",
+    "label": "Internal hard disk 2 (HDD1)"
+   },
+   {
+    "value": "HDD2",
+    "label": "Internal hard disk 3 (HDD2)"
+   },
+   {
+    "value": "HDD3",
+    "label": "Internal hard disk 4 (HDD3)"
+   },
+   {
+    "value": "HDD4",
+    "label": "Internal hard disk 5 (HDD4)"
+   },
+   {
+    "value": "PXEBOOT",
+    "label": "PXE network boot"
+   },
+   {
+    "value": "ATAPICD0",
+    "label": "ATAPI optical drive 1"
+   },
+   {
+    "value": "ATAPICD1",
+    "label": "ATAPI optical drive 2"
+   },
+   {
+    "value": "ATAPICD2",
+    "label": "ATAPI optical drive 3"
+   },
+   {
+    "value": "USBFDD",
+    "label": "USB floppy drive"
+   },
+   {
+    "value": "USBCD",
+    "label": "USB optical drive"
+   },
+   {
+    "value": "USBHDD",
+    "label": "USB hard disk / flash drive"
+   },
+   {
+    "value": "OtherHDD",
+    "label": "Other hard disk"
+   },
+   {
+    "value": "OtherCD",
+    "label": "Other optical drive"
+   },
+   {
+    "value": "NVMe0",
+    "label": "Internal NVMe SSD (slot 0)"
+   },
+   {
+    "value": "NVMe1",
+    "label": "Internal NVMe SSD (slot 1)"
+   },
+   {
+    "value": "HTTPSBOOT",
+    "label": "UEFI HTTPS network boot"
+   },
+   {
+    "value": "LENOVOCLOUD",
+    "label": "Lenovo cloud recovery"
+   },
+   {
+    "value": "ON-PREMISE",
+    "label": "On-premise recovery server"
+   },
+   {
+    "value": "NODEV",
+    "label": "No device"
+   }
+  ]
+ },
+ {
+  "name": "OnByAcAttach",
+  "category": "Wake & Alarms",
+  "label": "Power on when AC adapter is attached",
+  "description": "Makes the machine power itself on the moment the charger is plugged in, with no press of the power button. Handy for a permanently docked machine; on a laptop it means plugging in with the lid closed — or while it is in a bag — starts a full Fedora boot.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "PCIeTunneling",
+  "category": "Devices & Ports",
+  "label": "PCIe tunneling over Thunderbolt/USB4",
+  "description": "Allows PCIe traffic to be tunneled over the USB-C / Thunderbolt 4 ports. With it disabled, those ports still carry USB and DisplayPort, but nothing PCIe-attached works: a dock's own Ethernet or extra controllers, Thunderbolt NVMe enclosures and eGPUs never appear in lspci or boltctl.",
+  "risk": "caution",
+  "risk_note": "Thunderbolt/USB4 docks lose their PCIe devices (dock Ethernet, external NVMe, eGPU) while video and plain USB keep working, which reads like a Linux driver bug",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "PasswordBeep",
+  "category": "Passwords",
+  "label": "Password beep",
+  "description": "Makes the firmware beep while it is waiting for a pre-boot password and when one is rejected. It is audible feedback only, irrelevant unless a BIOS password is set, and completely invisible to Fedora.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "PasswordCountExceededError",
+  "category": "Passwords",
+  "label": "Password count exceeded error",
+  "description": "Controls whether the firmware stops with the classic POST error (0199, \"security password retry count exceeded\") after too many wrong pre-boot password attempts instead of quietly restarting. It applies only to the firmware's own password prompt and has nothing to do with Linux logins or LUKS retries.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "PhysicalPresenceForTpmClear",
+  "category": "Security",
+  "label": "Physical presence required to clear the TPM",
+  "description": "Requires someone physically at the machine to confirm at boot before a TPM clear requested by the operating system is actually carried out. Clearing the TPM destroys every key sealed to it, so on Fedora this is the guard that stops software from silently wiping keys enrolled with systemd-cryptenroll for TPM-based LUKS unlock.",
+  "risk": "danger",
+  "risk_note": "disabling removes the confirmation step, so a TPM clear can go through unattended and any LUKS volume unlocked via the TPM will stop opening without its recovery passphrase",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled (no confirmation required)"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled (confirmation required)"
+   }
+  ]
+ },
+ {
+  "name": "PowerOnPasswordControl",
+  "category": "Passwords",
+  "label": "Power-on password control",
+  "description": "Controls the ThinkPad power-on password function — the password the firmware demands at power-up, before any boot device is touched. Lenovo exposes only an on/off switch here and does not document the precise scope; what is certain is that this prompt is entirely separate from your Fedora login and LUKS passphrase and cannot be reset from inside Linux.",
+  "risk": "danger",
+  "risk_note": "gates a pre-boot password that cannot be cleared from Fedora — a forgotten power-on password on a ThinkPad generally means a Lenovo service call or system-board replacement",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "SecureBoot",
+  "category": "Security",
+  "label": "UEFI Secure Boot",
+  "description": "Makes the firmware hand control only to bootloaders and kernels signed by a trusted key. Fedora ships a signed shim, GRUB and kernel so it boots fine with Secure Boot on, but out-of-tree modules you build yourself (NVIDIA, VirtualBox, DKMS drivers) must be signed with an enrolled MOK or the kernel will refuse to load them. Note this attribute is exposed read-only through the kernel interface on this machine, so it can only be changed in BIOS setup (F1).",
+  "risk": "caution",
+  "risk_note": "unsigned third-party kernel modules stop loading once it is on, and it cannot be toggled from the OS here — only from BIOS setup",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "SecureRollBackPrevention",
+  "category": "Firmware & Management",
+  "label": "Secure rollback prevention (block BIOS downgrade)",
+  "description": "When enabled, the firmware refuses to flash a UEFI/BIOS image older than the one currently installed. On Fedora that means fwupdmgr can still apply updates but downgrades are rejected, so you cannot return to an earlier BIOS if a new release regresses suspend, the dock or fan behaviour.",
+  "risk": "caution",
+  "risk_note": "you permanently give up the ability to roll back to an older BIOS release if a newer one breaks something",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "SecurityChip",
+  "category": "Security",
+  "label": "Security chip (TPM 2.0)",
+  "description": "Controls whether the TPM 2.0 security chip is powered up and exposed to the operating system as /dev/tpm0. Fedora uses it for measured boot, fwupd attestation and — if you have run systemd-cryptenroll --tpm2-device — for unlocking the LUKS root volume without typing a passphrase.",
+  "risk": "danger",
+  "risk_note": "an encrypted root that unlocks via TPM will stop booting unattended and TPM-sealed secrets can become permanently unrecoverable; you would need the LUKS recovery passphrase to get back in",
+  "value_labels": [
+   {
+    "value": "Active",
+    "label": "Active (on and usable by the OS)"
+   },
+   {
+    "value": "Inactive",
+    "label": "Inactive (present but turned off)"
+   },
+   {
+    "value": "Disable",
+    "label": "Disabled (hidden from the OS)"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "SetupUI",
+  "category": "Firmware & Management",
+  "label": "BIOS setup screen style",
+  "description": "Chooses how the BIOS setup utility itself is drawn when you press F1 — the modern graphical, mouse-driven screens or the classic text menus. It changes nothing about how Fedora boots or behaves; text mode is simply quicker and fully keyboard-navigable.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "SimpleText",
+    "label": "Simple text"
+   },
+   {
+    "value": "Graphical",
+    "label": "Graphical"
+   }
+  ]
+ },
+ {
+  "name": "SleepState",
+  "category": "Power & Thermal",
+  "label": "Sleep state (S3 vs modern standby)",
+  "description": "Selects which suspend model the firmware advertises to the OS: Linux exposes classic S3 suspend-to-RAM, while Windows and Windows10 advertise Modern Standby, which Linux falls back to as s2idle. Keep this on Linux for Fedora — S3 gives a real, reliable suspend and substantially lower drain with the lid closed.",
+  "risk": "caution",
+  "risk_note": "switching to a Windows mode drops the machine to s2idle, which typically drains far more battery while 'asleep' and can wake or run warm in a bag",
+  "value_labels": [
+   {
+    "value": "Linux",
+    "label": "Linux (S3 suspend-to-RAM)"
+   },
+   {
+    "value": "Windows",
+    "label": "Windows (Modern Standby / s2idle)"
+   },
+   {
+    "value": "Windows10",
+    "label": "Windows 10 (Modern Standby / s2idle)"
+   }
+  ]
+ },
+ {
+  "name": "SpeedStep",
+  "category": "CPU & Virtualization",
+  "label": "Enhanced Intel SpeedStep (CPU frequency scaling)",
+  "description": "Enables the mechanism the CPU uses to vary core frequency and voltage with load. Fedora's intel_pstate driver relies on it; with it disabled the processor can no longer drop to low-power operating points, so cpufreq scaling and turbo behaviour change and idle power draw goes up for no benefit.",
+  "risk": "caution",
+  "risk_note": "the CPU loses frequency and voltage scaling, which shows up as worse battery life and more heat rather than as any obvious error message",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "StartupOptionKeys",
+  "category": "Boot & Startup",
+  "label": "Startup option keys (F1/F12 prompts at boot)",
+  "description": "Governs whether the firmware presents and honours the startup option keys during POST — F1 for BIOS setup, F12 for the one-time boot menu, Enter to interrupt normal startup. Disabling it makes POST quieter but takes away the usual keypress route into setup and the boot menu you would use to start a Fedora live or rescue USB.",
+  "risk": "caution",
+  "risk_note": "you may no longer be able to reach BIOS setup or the F12 boot menu with the normal keypress at power-on",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "StrongPassword",
+  "category": "Passwords",
+  "label": "Require strong BIOS passwords",
+  "description": "A password policy setting: with it enabled, any BIOS password you subsequently set must satisfy Lenovo's complexity rules rather than being freely chosen. It has no effect until you actually create a BIOS password.",
+  "risk": "caution",
+  "risk_note": "it constrains what you can set a BIOS password to, and a forgotten BIOS password cannot be cleared by the user",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "SystemManagementPasswordControl",
+  "category": "Passwords",
+  "label": "System management password control",
+  "description": "Governs the System Management Password — a firmware credential separate from the supervisor password, intended for IT management tooling to change a Lenovo-defined subset of BIOS settings. It sits entirely below the OS and does nothing for Fedora; on a personally owned machine with no management server it only adds another firmware credential you can lose.",
+  "risk": "danger",
+  "risk_note": "it brings a firmware-level password into the path to BIOS settings, and a forgotten system management password cannot be cleared by the user — it may require a Lenovo service intervention",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "TFTPWindowSize",
+  "category": "Network",
+  "label": "TFTP window size (PXE transfers)",
+  "description": "Sets how many TFTP data blocks the UEFI PXE client keeps in flight while downloading a network boot image; larger windows can transfer faster but need a server that supports the windowsize option. It applies only during a PXE boot attempt and has no effect on booting Fedora from the internal SSD or on networking once the OS is running.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "1",
+    "label": "1 block (most conservative)"
+   },
+   {
+    "value": "2",
+    "label": "2 blocks"
+   },
+   {
+    "value": "3",
+    "label": "3 blocks"
+   },
+   {
+    "value": "4",
+    "label": "4 blocks"
+   }
+  ]
+ },
+ {
+  "name": "TXTFeature",
+  "category": "CPU & Virtualization",
+  "label": "Intel TXT (Trusted Execution Technology)",
+  "description": "Enables Intel's hardware measured-launch technology, which works together with VT-x, VT-d and the TPM to establish a verified launch environment. Nothing in a stock Fedora install uses it — you would need a deliberately configured measured-launch stack such as tboot — so turning it on by itself buys you nothing.",
+  "risk": "caution",
+  "risk_note": "TXT depends on VT-x, VT-d and an active security chip; enabling it on a system not set up for measured launch changes platform launch behaviour with no benefit",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "ThinkShieldPasswordlessPowerOnAuthentication",
+  "category": "Security",
+  "label": "ThinkShield passwordless power-on authentication",
+  "description": "Lets the firmware accept a ThinkShield enrolment — typically the fingerprint reader — at power-on in place of typing the power-on password. This is a pre-boot flow handled entirely by firmware and is unrelated to fprintd and GNOME login; with no power-on password set it has nothing to authenticate.",
+  "risk": "caution",
+  "risk_note": "if you later set a power-on password and rely on the fingerprint to get past it, turning this off leaves the typed password as the only way to start the machine",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "ThinkShieldsecurewipe",
+  "category": "Security",
+  "label": "ThinkShield Secure Wipe (built-in drive eraser)",
+  "description": "Controls whether Lenovo's ThinkShield Secure Wipe utility is available from the firmware — a built-in tool that issues a sanitize/secure-erase command to the internal drive. Running it destroys everything on the NVMe SSD, including the Fedora Btrfs root and any LUKS header.",
+  "risk": "danger",
+  "risk_note": "the utility this exposes irreversibly erases the internal drive — there is no recovery of the Fedora install or of LUKS-encrypted data afterwards",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "ThunderboltAccess",
+  "category": "Devices & Ports",
+  "label": "Thunderbolt / USB4 port access",
+  "description": "Enables the Thunderbolt 4 / USB4 controller behind the USB-C ports. With it disabled, Thunderbolt docks, eGPUs and Thunderbolt-attached storage stop being detected on Fedora — nothing appears under boltctl or /sys/bus/thunderbolt — and displays driven through a Thunderbolt dock go dark; USB-C charging is unaffected.",
+  "risk": "caution",
+  "risk_note": "Thunderbolt docks, the monitors attached to them and TB storage all stop working at once, which is easy to misdiagnose as a failed dock or cable",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "TotalGraphicsMemory",
+  "category": "Input & Display",
+  "label": "Pre-allocated graphics memory",
+  "description": "Sets how much system RAM the firmware reserves for the Intel integrated GPU before the OS loads. Linux's i915 driver allocates further graphics memory dynamically from system RAM as it needs it, so this mainly changes the size of the fixed reserved block — choosing 512 MB simply takes that much more away from the RAM available to Fedora.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "256MB",
+    "label": "256 MB"
+   },
+   {
+    "value": "512MB",
+    "label": "512 MB"
+   }
+  ]
+ },
+ {
+  "name": "TotalMemoryEncryption",
+  "category": "Security",
+  "label": "Intel Total Memory Encryption (TME)",
+  "description": "Has the memory controller encrypt the contents of system DRAM with a hardware key generated at each boot, so RAM contents are not readable by someone who physically removes or cold-boots the modules. It is transparent to the OS — Fedora needs no configuration and reports it in the kernel log at boot — and it is not a substitute for LUKS disk encryption.",
+  "risk": "caution",
+  "risk_note": "if the machine becomes unstable after enabling it the symptoms look like generic memory faults and are hard to trace back to this setting; revert it in BIOS setup",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "TouchPad",
+  "category": "Input & Display",
+  "label": "Touchpad",
+  "description": "Enables or disables the built-in touchpad at firmware level, before Fedora ever sees the device. With it off no touchpad appears to libinput and GNOME's Mouse & Touchpad settings have nothing to control, so no software toggle can bring it back — only BIOS setup can. The TrackPoint is a separate setting and keeps working.",
+  "risk": "caution",
+  "risk_note": "if the TrackPoint is also disabled you are left with no pointing device at all and must navigate BIOS setup by keyboard to recover",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "TrackPoint",
+  "category": "Input & Display",
+  "label": "TrackPoint (red pointing stick)",
+  "description": "Enables or disables the red pointing stick and its dedicated physical buttons at firmware level. With it off the device is absent from libinput entirely and cannot be re-enabled from GNOME; the touchpad is controlled by its own separate setting and is unaffected.",
+  "risk": "caution",
+  "risk_note": "if the touchpad is also disabled you are left with no pointing device at all and must navigate BIOS setup by keyboard to recover",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "USBKeyProvisioning",
+  "category": "Firmware & Management",
+  "label": "USB key provisioning (Intel AMT setup from USB)",
+  "description": "Allows Intel AMT / Management Engine configuration to be applied from a setup file on a USB flash drive during POST. It concerns out-of-band management rather than the operating system, so Fedora behaves the same either way, but leaving it enabled means anyone with physical access and a prepared USB stick can attempt to provision the management engine.",
+  "risk": "caution",
+  "risk_note": "it is a physical-access provisioning path into the machine's out-of-band management — leave it disabled unless you are deliberately setting up AMT",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "USBPortAccess",
+  "category": "Devices & Ports",
+  "label": "USB port access",
+  "description": "Master firmware switch for the machine's USB ports. With it disabled, external USB keyboards, mice, flash drives and docks stop working, internal components that hang off USB on ThinkPads (the webcam and the fingerprint reader) typically disappear from Fedora as well, and you can no longer boot a Fedora live or rescue USB.",
+  "risk": "caution",
+  "risk_note": "you lose USB rescue-media boot and every USB-attached device at once; the built-in keyboard still works, so re-enable it from BIOS setup (F1)",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "UefiPxeBootPriority",
+  "category": "Network",
+  "label": "UEFI PXE boot IP priority",
+  "description": "Chooses whether the UEFI PXE client attempts IPv6 or IPv4 first when booting over the network. It applies only during a PXE boot attempt and has no bearing on booting Fedora from the internal SSD or on how NetworkManager handles IPv4/IPv6 once the OS is running.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "IPv6First",
+    "label": "IPv6 first"
+   },
+   {
+    "value": "IPv4First",
+    "label": "IPv4 first"
+   }
+  ]
+ },
+ {
+  "name": "UserDefinedAlarmFriday",
+  "category": "Wake & Alarms",
+  "label": "Wake alarm on Friday",
+  "description": "Selects Friday as one of the days on which the firmware's user-defined wake alarm fires. It only has an effect when \"Wake up on alarm\" is set to User-defined, and it uses the time in \"Wake alarm time\"; the alarm is handled by the RTC in firmware, so it works even when Fedora is fully powered off.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "UserDefinedAlarmMonday",
+  "category": "Wake & Alarms",
+  "label": "Wake alarm on Monday",
+  "description": "Selects Monday as one of the days on which the firmware's user-defined wake alarm fires. It only has an effect when \"Wake up on alarm\" is set to User-defined, and it uses the time in \"Wake alarm time\"; the alarm is handled by the RTC in firmware, so it works even when Fedora is fully powered off.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "UserDefinedAlarmSaturday",
+  "category": "Wake & Alarms",
+  "label": "Wake alarm on Saturday",
+  "description": "Selects Saturday as one of the days on which the firmware's user-defined wake alarm fires. It only has an effect when \"Wake up on alarm\" is set to User-defined, and it uses the time in \"Wake alarm time\"; the alarm is handled by the RTC in firmware, so it works even when Fedora is fully powered off.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "UserDefinedAlarmSunday",
+  "category": "Wake & Alarms",
+  "label": "Wake alarm on Sunday",
+  "description": "Selects Sunday as one of the days on which the firmware's user-defined wake alarm fires. It only has an effect when \"Wake up on alarm\" is set to User-defined, and it uses the time in \"Wake alarm time\"; the alarm is handled by the RTC in firmware, so it works even when Fedora is fully powered off.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "UserDefinedAlarmThursday",
+  "category": "Wake & Alarms",
+  "label": "Wake alarm on Thursday",
+  "description": "Selects Thursday as one of the days on which the firmware's user-defined wake alarm fires. It only has an effect when \"Wake up on alarm\" is set to User-defined, and it uses the time in \"Wake alarm time\"; the alarm is handled by the RTC in firmware, so it works even when Fedora is fully powered off.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "UserDefinedAlarmTime",
+  "category": "Wake & Alarms",
+  "label": "Wake alarm time",
+  "description": "The clock time (HH:MM:SS) at which the user-defined wake alarm fires on the days you enabled above; it is a free-text field rather than a menu. Note that the firmware alarm reads the hardware RTC, so if Fedora keeps the RTC in UTC (the default on a Linux-only ThinkPad) the alarm will fire at that UTC time, not your local time.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": []
+ },
+ {
+  "name": "UserDefinedAlarmTuesday",
+  "category": "Wake & Alarms",
+  "label": "Wake alarm on Tuesday",
+  "description": "Selects Tuesday as one of the days on which the firmware's user-defined wake alarm fires. It only has an effect when \"Wake up on alarm\" is set to User-defined, and it uses the time in \"Wake alarm time\"; the alarm is handled by the RTC in firmware, so it works even when Fedora is fully powered off.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "UserDefinedAlarmWednesday",
+  "category": "Wake & Alarms",
+  "label": "Wake alarm on Wednesday",
+  "description": "Selects Wednesday as one of the days on which the firmware's user-defined wake alarm fires. It only has an effect when \"Wake up on alarm\" is set to User-defined, and it uses the time in \"Wake alarm time\"; the alarm is handled by the RTC in firmware, so it works even when Fedora is fully powered off.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "UserPresenceSensing",
+  "category": "Devices & Ports",
+  "label": "User presence sensing",
+  "description": "Master switch for the human-presence sensor above the display, which Lenovo's Windows software uses for walk-away lock and wake-on-approach. Fedora and GNOME have no support for these behaviours, so leaving it enabled gains you nothing on Linux and disabling it simply powers the sensor down.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "VTdFeature",
+  "category": "CPU & Virtualization",
+  "label": "Intel VT-d (I/O virtualization)",
+  "description": "Enables the chipset IOMMU, which remaps and restricts DMA from PCIe and Thunderbolt devices. On Fedora this is what makes intel_iommu and VFIO device passthrough to a VM work, and it backs kernel DMA protection against malicious Thunderbolt/USB4 devices; with it disabled you get no IOMMU groups and no passthrough.",
+  "risk": "caution",
+  "risk_note": "disabling breaks PCI/GPU passthrough to virtual machines and removes IOMMU-based DMA protection for Thunderbolt ports",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "VirtualizationTechnology",
+  "category": "CPU & Virtualization",
+  "label": "Intel VT-x (CPU virtualization)",
+  "description": "Enables Intel VT-x hardware virtualization extensions on the CPU. Fedora needs this for /dev/kvm to appear, so GNOME Boxes, virt-manager/libvirt, qemu-kvm and the Android emulator all depend on it; without it those tools either refuse to start or fall back to unusably slow software emulation.",
+  "risk": "caution",
+  "risk_note": "disabling removes /dev/kvm, so every KVM-based virtual machine on the system stops working",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "WakeOnLAN",
+  "category": "Wake & Alarms",
+  "label": "Wake on LAN",
+  "description": "Lets a magic packet arriving on the wired Ethernet interface power the machine on or resume it, and chooses whether that is allowed on AC only or on battery too. On Fedora the firmware setting is only half of it: the NIC also needs Wake-on-LAN armed in the OS (ethtool -s <iface> wol g, or NetworkManager's wake-on-lan property) for it to actually fire.",
+  "risk": "caution",
+  "risk_note": "AC power and battery lets network traffic power the laptop on while it is closed in a bag, which drains the battery and can trap heat",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "ACOnly",
+    "label": "AC power only"
+   },
+   {
+    "value": "ACandBattery",
+    "label": "AC power and battery"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "WakeOnLANDock",
+  "category": "Wake & Alarms",
+  "label": "Wake on LAN from dock",
+  "description": "Extends Wake on LAN to the Ethernet port of an attached USB-C/Thunderbolt dock rather than only the built-in NIC. It does nothing unless Wake on LAN itself is enabled and you actually use a dock with a wired connection.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "WakeUponAlarm",
+  "category": "Wake & Alarms",
+  "label": "Wake up on alarm",
+  "description": "Makes the real-time clock power the system on at a scheduled moment, choosing between a one-off event, a daily or weekly event, or the user-defined day-and-time set in the UserDefinedAlarm* attributes. This is firmware-level and fires with Fedora shut down; for scheduled wakes from suspend, rtcwake or a systemd timer with WakeSystem=true is usually the easier tool.",
+  "risk": "caution",
+  "risk_note": "the laptop can switch itself on unattended — including while closed in a bag — with no obvious cause from inside the OS",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "UserDefined",
+    "label": "User-defined day and time"
+   },
+   {
+    "value": "WeeklyEvent",
+    "label": "Weekly event"
+   },
+   {
+    "value": "DailyEvent",
+    "label": "Daily event"
+   },
+   {
+    "value": "SingleEvent",
+    "label": "Single event"
+   }
+  ]
+ },
+ {
+  "name": "WiFiNetworkBoot",
+  "category": "Network",
+  "label": "Wi-Fi network boot",
+  "description": "Allows UEFI network booting (PXE/HTTP boot) over the wireless adapter instead of only over wired Ethernet, adding a wireless entry to the boot device list. It is a provisioning feature for managed fleets and is of no use for a normal Fedora install that boots from the internal NVMe SSD.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "WindowsUEFIFirmwareUpdate",
+  "category": "Firmware & Management",
+  "label": "Windows UEFI firmware update (capsule updates)",
+  "description": "Allows the operating system to hand a signed UEFI capsule to the firmware so a BIOS/ME update can be applied on the next reboot. Despite the name this is exactly the path Fedora's fwupd/LVFS uses, so with it disabled `fwupdmgr update` cannot flash BIOS updates and you are left with Lenovo's bootable update ISO.",
+  "risk": "caution",
+  "risk_note": "disabling blocks fwupd/LVFS from applying BIOS and firmware security updates from within Fedora",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "WirelessAutoDisconnection",
+  "category": "Network",
+  "label": "Wireless auto-disconnection",
+  "description": "When enabled, the firmware drops the wireless connection automatically once a wired Ethernet link is detected, and restores it when the cable is unplugged. NetworkManager already prefers wired over wireless on Fedora, so this mostly duplicates existing behaviour while making Wi-Fi vanish in a way that looks like a driver fault.",
+  "risk": "caution",
+  "risk_note": "Wi-Fi disappearing whenever you dock or plug in Ethernet is easy to mistake for a broken wireless driver",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "WirelessLANAccess",
+  "category": "Network",
+  "label": "Wireless LAN (Wi-Fi) access",
+  "description": "Hardware master switch for the internal Wi-Fi adapter. Disabled, the adapter is hidden from the system entirely, so Fedora shows no wireless device at all — rfkill, NetworkManager and GNOME Settings cannot bring it back, only a trip into BIOS setup can.",
+  "risk": "caution",
+  "risk_note": "the Wi-Fi adapter disappears completely and can only be restored from BIOS setup (F1), which is awkward if wireless is your only connectivity",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "WirelessWANAccess",
+  "category": "Network",
+  "label": "Wireless WAN (cellular) access",
+  "description": "Hardware master switch for the optional WWAN (4G/5G) module bay. If your T14 has no cellular card fitted this changes nothing; if one is fitted, disabling hides it so ModemManager and GNOME Settings show no mobile broadband device.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "pending_reboot",
+  "category": "Firmware & Management",
+  "label": "Pending reboot flag",
+  "description": "Not a setting but a read-only status flag from the think_lmi driver; a value of 1 means one or more attribute changes have been written and are staged in firmware. They take effect only after a full reboot, so a setting can read as changed here while the running system still behaves the old way.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": []
+ }
+]

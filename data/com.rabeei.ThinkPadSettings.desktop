@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=ThinkPad BIOS Settings
+GenericName=Firmware Settings
+Comment=View and change ThinkPad firmware settings without rebooting into BIOS setup
+Exec=thinkpad-settings
+Icon=com.rabeei.ThinkPadSettings
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=BIOS;UEFI;firmware;ThinkPad;Lenovo;boot;virtualization;thinklmi;
+# Must match the GTK application ID so Wayland associates the window with this
+# launcher, otherwise the dock shows a generic icon.
+StartupWMClass=com.rabeei.ThinkPadSettings
+StartupNotify=true
