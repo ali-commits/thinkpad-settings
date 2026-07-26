@@ -149,8 +149,9 @@ attribute:
 - `category` must be one of the ten in `metadata.CATEGORY_ORDER`.
 - `risk` is `safe`, `caution` or `danger`. Use `danger` only for things that can
   lock the user out, destroy data access, or cannot be undone.
-- `value_labels` must cover **every** value in the firmware's
-  `BiosSettingPossibleValues`, in the same order.
+- `value_labels` must cover **every** value any known machine permits for that
+  attribute. Order does not matter — rows render in the order the firmware
+  reports — and extra labels are fine as long as some fixture permits them.
 - Descriptions must be **state-neutral**. Do not write "as it is now" or
   "currently disabled" — the reader's machine differs from yours, and the
   sentence can end up contradicting the value shown in the same row.
