@@ -57,7 +57,8 @@ class Failure(enum.Enum):
     DENIED = "denied"  # polkit did not authorise: dismissed, wrong password or refused
     TIMEOUT = "timeout"  # no reply in time; the write may still have landed
     UNAVAILABLE = "unavailable"  # fwupd not running / not on the bus
-    UNSUPPORTED = "unsupported"  # no firmware-attributes device on this machine
+    REJECTED = "rejected"  # fwupd refused THIS request: bad value, read-only, unknown name
+    NOTHING_TO_DO = "nothing"  # every value already matched
     OTHER = "other"
 
 
@@ -161,12 +162,15 @@ def _classify(error: GLib.Error) -> FwupdError:
     if remote in _AUTH_ERRORS:
         return FwupdError(Failure.DENIED, "Not authorized — nothing was changed")
 
+    if remote == "org.freedesktop.fwupd.NothingToDo":
+        return FwupdError(Failure.NOTHING_TO_DO, message)
+
     if remote in ("org.freedesktop.fwupd.NotSupported", "org.freedesktop.fwupd.NotFound"):
-        return FwupdError(
-            Failure.UNSUPPORTED,
-            "This machine does not expose editable BIOS settings to Linux. "
-            "It needs a Lenovo ThinkPad with the think_lmi kernel driver loaded.",
-        )
+        # Per-request refusals: an unknown attribute name, a value outside the
+        # permitted list, or a read-only attribute. NOT a statement about the
+        # machine's capabilities, so pass fwupd's own explanation through
+        # rather than inventing one.
+        return FwupdError(Failure.REJECTED, message)
 
     lowered = message.lower()
     if "not authorized" in lowered or "not permitted" in lowered:

@@ -194,6 +194,22 @@ def run(app):
     c = _classify(local)
     check("non-remote error survives classification", c.kind.value == "other", c.message)
 
+    # NotFound/NotSupported are per-request refusals from fwupd, not statements
+    # about the machine. Claiming "this machine has no editable BIOS settings"
+    # here was flatly wrong on a ThinkPad that plainly does.
+    for remote, text, kind in [
+        ("org.freedesktop.fwupd.NotFound", "attribute not found", "rejected"),
+        ("org.freedesktop.fwupd.NotSupported", "SecureBoot is read only", "rejected"),
+        ("org.freedesktop.fwupd.NotSupported",
+         "Bogus doesn't map to any possible values for BootMode", "rejected"),
+        ("org.freedesktop.fwupd.NothingToDo",
+         "no BIOS settings needed to be changed", "nothing"),
+    ]:
+        c = _classify(_Gio.dbus_error_new_for_dbus_error(remote, text))
+        check(f"{remote.split('.')[-1]} -> {kind}", c.kind.value == kind, c.kind.value)
+        check(f"{remote.split('.')[-1]} keeps fwupd's wording",
+              c.message == text, c.message)
+
     # An unauthorised read succeeds but omits every value. Defaulting those to
     # "" would render 103 switches in the off position as if that were real.
     import copy as _copy
@@ -307,13 +323,16 @@ def run(app):
 
     bo = win._by_name["BootOrder"]
     enabled, avail = bootorder.partition(bo.current_value, bo.possible_values)
-    win._stage(bo, bootorder.serialise(bootorder.move(enabled, 0, 1)), FakeRow())
-    check("bootorder staged", "BootOrder" in win._staged)
-    check("bootorder value differs", win._staged["BootOrder"] != bo.current_value,
-          win._staged["BootOrder"])
 
-    risky = [n for n in win._staged if metadata.get(n).is_risky]
-    check("bootorder flagged risky", "BootOrder" in risky)
+    # fwupd validates a written value against possible_values, and BootOrder's
+    # value is a colon-joined list while its possible values are single device
+    # codes — so any reorder is rejected AND aborts the whole batch. The row is
+    # therefore read-only, and the pre-flight check must catch it regardless.
+    win._staged.clear()
+    win._staged["BootOrder"] = bootorder.serialise(bootorder.move(enabled, 0, 1))
+    check("boot order reorder is caught before sending",
+          win._rejection() is not None, str(win._rejection()))
+    win._staged.clear()
 
     win._staged["SecurityChip"] = "Disable"
     risky = sorted((n for n in win._staged if metadata.get(n).is_risky),
@@ -347,8 +366,23 @@ def run(app):
     win._staged.clear()
     win._staged["BootOrder"] = ""                  # emptied: falsy but fatal
     win._confirm_apply()
-    check("emptied boot order is blocked pending confirmation",
+    check("emptied boot order never reaches apply",
           applied_directly == [], f"{applied_directly}")
+
+    applied_directly.clear()
+    win._staged.clear()
+    win._staged["SecureBoot"] = "Enable"           # firmware-reported read-only
+    check("read-only setting is caught before sending",
+          win._rejection() is not None, str(win._rejection()))
+    win._confirm_apply()
+    check("read-only setting never reaches apply",
+          applied_directly == [], f"{applied_directly}")
+
+    applied_directly.clear()
+    win._staged.clear()
+    win._staged["BootMode"] = "NotAValue"          # outside possible_values
+    check("out-of-range value is caught before sending",
+          win._rejection() is not None, str(win._rejection()))
 
     win._apply = real_apply
 
@@ -365,12 +399,12 @@ def run(app):
           win._describe("SleepState", "Linux"))
 
     win._staged.clear()
-    win._staged["BootOrder"] = bootorder.serialise(bootorder.move(enabled, 0, 1))
+    win._staged["SleepState"] = "Windows"
     win._staged["SecurityChip"] = "Disable"
 
     win._apply()
     check("set_settings called", win._client.set_calls == 1)
-    check("payload matched staged", set(applied_payload) == {"BootOrder", "SecurityChip"},
+    check("payload matched staged", set(applied_payload) == {"SleepState", "SecurityChip"},
           str(sorted(applied_payload)))
     check("staged cleared after apply", not win._staged)
 

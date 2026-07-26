@@ -411,7 +411,7 @@ class MainWindow(Adw.ApplicationWindow):
     def _row_for(self, setting: BiosSetting) -> Gtk.Widget:
         meta = metadata.get(setting.name)
 
-        if setting.name == bootorder.BOOT_ORDER and setting.editable:
+        if setting.name == bootorder.BOOT_ORDER:
             return self._boot_order_row(setting, meta)
         if not setting.editable:
             return self._readonly_row(setting, meta)
@@ -540,27 +540,32 @@ class MainWindow(Adw.ApplicationWindow):
         return row
 
     def _boot_order_row(self, setting: BiosSetting, meta) -> Adw.ExpanderRow:
+        """Read-only view of the boot order.
+
+        This cannot be an editor. fwupd validates a written value against the
+        attribute's possible-values list, and BootOrder's value is a
+        colon-joined sequence while its possible values are single device
+        codes, so every reordering is rejected with
+
+            NVMe0:USBHDD:... doesn't map to any possible values for BootOrder
+
+        Worse, one rejected entry aborts the whole SetBiosSettings batch, so
+        offering the edit here would silently break every other change staged
+        alongside it.
+        """
         row = Adw.ExpanderRow()
         row.set_use_markup(False)
         row.set_title(meta.label)
-        # This is the one editor that can strand the machine, and it is the
-        # only one that bypasses _decorate, so carry the risk note explicitly.
         subtitle = meta.description
-        if meta.risk_note:
-            subtitle = f"{subtitle}\n⚠ {meta.risk_note}" if subtitle else meta.risk_note
+        subtitle = (
+            f"{subtitle}\nThis one cannot be changed from here — fwupd rejects "
+            "list values. Use BIOS setup (F1 at startup)."
+            if subtitle
+            else "Cannot be changed from here."
+        )
         row.set_subtitle(subtitle)
         row.set_subtitle_lines(0)
         row.set_expanded(bool(self._boot_expanded))
-
-        badge = Gtk.Label(label="changed", valign=Gtk.Align.CENTER)
-        badge.add_css_class("staged-badge")
-        badge.set_visible(setting.name in self._staged)
-        row.add_suffix(badge)
-        row.staged_badge = badge
-
-        enabled, available = bootorder.partition(
-            self._value_of(setting), setting.possible_values
-        )
 
         def remember_expanded(widget, _param):
             if not self._building:
@@ -568,56 +573,31 @@ class MainWindow(Adw.ApplicationWindow):
 
         row.connect("notify::expanded", remember_expanded)
 
-        def restage(devices: list[str]) -> None:
-            self._stage(setting, bootorder.serialise(devices), row)
-            # The list changed shape, so rebuild to redraw the arrows. Keep the
-            # expander open and the view where it was across that rebuild.
-            self._boot_expanded = True
-            self._rebuild_pane(keep_scroll=True)
+        lock = Gtk.Image.new_from_icon_name("changes-prevent-symbolic")
+        lock.set_tooltip_text(
+            "fwupd cannot write an ordered list. Change the boot order in BIOS "
+            "setup by pressing F1 during startup."
+        )
+        lock.add_css_class("dim-label")
+        row.add_suffix(lock)
 
-        for index, device in enumerate(enabled):
+        devices = bootorder.parse(self._value_of(setting))
+        if not devices:
+            entry = Adw.ActionRow()
+            entry.set_use_markup(False)
+            entry.set_title("No boot devices listed")
+            entry.add_css_class("dim-label")
+            row.add_row(entry)
+            return row
+
+        for index, device in enumerate(devices):
             entry = Adw.ActionRow()
             entry.set_use_markup(False)
             entry.set_title(meta.label_for(device))
+            entry.set_subtitle(device)
             entry.add_prefix(
                 Gtk.Label(label=str(index + 1), css_classes=["dim-label", "monospace"])
             )
-
-            up = Gtk.Button(icon_name="go-up-symbolic", valign=Gtk.Align.CENTER)
-            up.add_css_class("flat")
-            up.set_sensitive(index > 0)
-            up.set_tooltip_text("Move earlier in the boot order")
-            up.connect("clicked", lambda _b, i=index: restage(bootorder.move(enabled, i, -1)))
-
-            down = Gtk.Button(icon_name="go-down-symbolic", valign=Gtk.Align.CENTER)
-            down.add_css_class("flat")
-            down.set_sensitive(index < len(enabled) - 1)
-            down.set_tooltip_text("Move later in the boot order")
-            down.connect("clicked", lambda _b, i=index: restage(bootorder.move(enabled, i, 1)))
-
-            remove = Gtk.Button(icon_name="list-remove-symbolic", valign=Gtk.Align.CENTER)
-            remove.add_css_class("flat")
-            remove.set_tooltip_text("Remove from the boot order")
-            remove.connect(
-                "clicked",
-                lambda _b, d=device: restage([x for x in enabled if x != d]),
-            )
-
-            entry.add_suffix(up)
-            entry.add_suffix(down)
-            entry.add_suffix(remove)
-            row.add_row(entry)
-
-        for device in available:
-            entry = Adw.ActionRow()
-            entry.set_use_markup(False)
-            entry.set_title(meta.label_for(device))
-            entry.add_css_class("dim-label")
-            add = Gtk.Button(icon_name="list-add-symbolic", valign=Gtk.Align.CENTER)
-            add.add_css_class("flat")
-            add.set_tooltip_text("Add to the end of the boot order")
-            add.connect("clicked", lambda _b, d=device: restage(enabled + [d]))
-            entry.add_suffix(add)
             row.add_row(entry)
 
         return row
@@ -682,8 +662,34 @@ class MainWindow(Adw.ApplicationWindow):
             return " → ".join(meta.label_for(d) for d in devices)
         return meta.label_for(value)
 
+    def _rejection(self) -> str | None:
+        """Why fwupd would refuse this batch, checked before sending it.
+
+        fwupd aborts the entire SetBiosSettings call on the first bad entry, so
+        one unwritable value would silently take every other staged change down
+        with it. Catching it here names the offender instead.
+        """
+        for name, value in sorted(self._staged.items()):
+            setting = self._by_name.get(name)
+            label = metadata.get(name).label
+            if setting is None:
+                return f"“{label}” is no longer offered by your firmware."
+            if setting.read_only:
+                return f"“{label}” is read-only and cannot be changed from here."
+            if setting.is_enum and value not in setting.possible_values:
+                return (
+                    f"“{label}” cannot be set to “{value}” — your firmware only "
+                    "accepts a single value from its own list."
+                )
+        return None
+
     def _confirm_apply(self) -> None:
         if not self._staged:
+            return
+
+        problem = self._rejection()
+        if problem:
+            self._toast(problem)
             return
 
         # Only genuinely lock-you-out changes get a modal. Gating on "caution"
@@ -796,6 +802,15 @@ class MainWindow(Adw.ApplicationWindow):
                 self.reload()
             elif error.kind is Failure.DENIED:
                 self._toast(error.message)
+            elif error.kind is Failure.NOTHING_TO_DO:
+                # Every value already matched; treat it as a benign no-op.
+                self._staged.clear()
+                self._toast("Those values were already set")
+                self.reload()
+            elif error.kind is Failure.REJECTED:
+                # fwupd's own words — it names the setting and the reason, and
+                # this is emphatically not a claim about the machine.
+                self._toast(f"Firmware rejected the change: {error.message}")
             else:
                 self._toast(f"Could not apply: {error.message}")
 
