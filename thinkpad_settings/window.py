@@ -4,13 +4,19 @@ from __future__ import annotations
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
-from . import bootorder, metadata
+from . import bootorder, metadata, search
 from .fwupd import PENDING_REBOOT, BiosSetting, Failure, FwupdClient, FwupdError
 
 # Values that read naturally as an on/off switch rather than a two-item combo.
 _BOOLEAN = {"Disable", "Enable"}
 _ON = "Enable"
 _OFF = "Disable"
+
+# Search results below this fraction of the best score are noise from
+# subsequence matching rather than answers. Tuned against real queries: a
+# precise query collapses to a handful, a vague one still browses.
+_SEARCH_CUTOFF = 0.45
+_SEARCH_LIMIT = 40
 
 _STYLE = """
 .staged-badge {
@@ -347,12 +353,47 @@ class MainWindow(Adw.ApplicationWindow):
         self._search = entry.get_text().strip().lower()
         self._rebuild_pane()
 
-    def _matches(self, setting: BiosSetting) -> bool:
+    def _score(self, setting: BiosSetting) -> int | None:
+        """Relevance of one setting to the current query, None if unmatched."""
         meta = metadata.get(setting.name)
-        haystack = " ".join(
-            (setting.name, meta.label, meta.description, meta.category)
-        ).lower()
-        return all(word in haystack for word in self._search.split())
+        return search.score_query(
+            self._search,
+            [
+                # A hit on the label or the raw attribute name is what the
+                # person almost certainly meant; prose matches are weak signals.
+                (meta.label, 3),
+                (setting.name, 3),
+                (meta.category, 1),
+                (meta.description, 1),
+            ],
+        )
+
+    def _matches(self, setting: BiosSetting) -> bool:
+        return self._score(setting) is not None
+
+    def _ranked(self) -> list[BiosSetting]:
+        """Matching settings, best first, with the weak tail cut off.
+
+        A subsequence match will find *something* in almost every setting —
+        "wol" technically matches over a hundred of them. Showing all of that
+        ranked is worse than useless: the real answer is on screen but so is
+        every near-miss. Keep only what scores respectably against the best
+        hit, so a strong match collapses the list to a handful while a vague
+        query still returns a browsable set.
+        """
+        scored: list[tuple[int, str, BiosSetting]] = []
+        for setting in self._settings:
+            value = self._score(setting)
+            if value is not None:
+                scored.append((value, metadata.get(setting.name).label, setting))
+        if not scored:
+            return []
+
+        best = max(value for value, _, _ in scored)
+        cutoff = best * _SEARCH_CUTOFF
+        keep = [item for item in scored if item[0] >= cutoff]
+        keep.sort(key=lambda item: (-item[0], item[1]))
+        return [setting for _, _, setting in keep[:_SEARCH_LIMIT]]
 
     # -- settings pane ---------------------------------------------------
 
@@ -367,7 +408,7 @@ class MainWindow(Adw.ApplicationWindow):
             page = Adw.PreferencesPage()
 
             if self._search:
-                shown = [s for s in self._settings if self._matches(s)]
+                shown = self._ranked()
                 self._content_title.set_title("Search results")
                 self._content_title.set_subtitle(
                     f"{len(shown)} of {len(self._settings)} settings"
@@ -384,14 +425,7 @@ class MainWindow(Adw.ApplicationWindow):
                     )
                     self._scroll.set_child(empty)
                     return
-                by_category: dict[str, list[BiosSetting]] = {}
-                for setting in shown:
-                    by_category.setdefault(
-                        metadata.get(setting.name).category, []
-                    ).append(setting)
-                for category in metadata.CATEGORY_ORDER:
-                    if category in by_category:
-                        page.add(self._group(category, by_category[category]))
+                page.add(self._group(None, shown, ordered=True))
             else:
                 shown = [
                     s
@@ -416,13 +450,22 @@ class MainWindow(Adw.ApplicationWindow):
             GLib.idle_add(restore)
 
     def _group(
-        self, title: str | None, settings: list[BiosSetting]
+        self,
+        title: str | None,
+        settings: list[BiosSetting],
+        ordered: bool = False,
     ) -> Adw.PreferencesGroup:
+        """A group of rows. *ordered* keeps the given order for ranked results."""
         group = Adw.PreferencesGroup()
         if title:
             # PreferencesGroup has no use-markup toggle, so escape instead.
             group.set_title(GLib.markup_escape_text(title))
-        for setting in sorted(settings, key=lambda s: metadata.get(s.name).label):
+        rows = (
+            settings
+            if ordered
+            else sorted(settings, key=lambda s: metadata.get(s.name).label)
+        )
+        for setting in rows:
             group.add(self._row_for(setting))
         return group
 

@@ -1741,9 +1741,9 @@
   "name": "SleepState",
   "category": "Power & Thermal",
   "label": "Sleep state (S3 vs modern standby)",
-  "description": "Selects which suspend model the firmware advertises to the OS: Linux exposes classic S3 suspend-to-RAM, while Windows and Windows10 advertise Modern Standby, which Linux falls back to as s2idle. Keep this on Linux for Fedora — S3 gives a real, reliable suspend and substantially lower drain with the lid closed.",
+  "description": "Selects which suspend model the firmware advertises: Linux exposes classic S3 suspend-to-RAM, while Windows and Windows10 advertise Modern Standby, which Linux falls back to as s2idle. S3 normally drains far less with the lid closed, but it is broken on some ThinkPads — the machine suspends and never resumes, so the power button cold-boots it and the session is lost. If that happens, either set this to a Windows option or boot with mem_sleep_default=s2idle.",
   "risk": "caution",
-  "risk_note": "switching to a Windows mode drops the machine to s2idle, which typically drains far more battery while 'asleep' and can wake or run warm in a bag",
+  "risk_note": "changing the suspend model changes battery drain with the lid closed, and S3 does not resume at all on some models — verify a close/open cycle afterwards rather than assuming it worked",
   "value_labels": [
    {
     "value": "Linux",
