@@ -6,8 +6,11 @@ on:
   workflow_dispatch:
 
 # Only the deploy job needs elevated scopes; the build job reads releases.
+# actions:read is required by deploy-pages v4+, and because naming a
+# permissions block sets every unlisted scope to none, it has to be explicit.
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -28,7 +31,7 @@ jobs:
           dnf install -y --setopt=install_weak_deps=False \
             git-core createrepo_c rpm-sign gnupg2 gh
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Mark workspace safe for git
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -121,9 +124,12 @@ jobs:
           test -f _site/RPM-GPG-KEY-thinkpad-settings
           grep -q 'repo_gpgcheck=1' _site/thinkpad-settings.repo
 
-      - uses: actions/upload-pages-artifact@v3
+      # v4 stopped including dotfiles by default, which would silently drop
+      # .nojekyll from the published site.
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+          include-hidden-files: true
 
   deploy:
     name: Deploy to GitHub Pages
@@ -134,4 +140,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

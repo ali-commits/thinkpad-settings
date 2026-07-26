@@ -32,7 +32,7 @@ jobs:
             python3-gobject python3-cairo gobject-introspection \
             gtk4 libadwaita xorg-x11-server-Xvfb
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Mark workspace safe for git
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -101,7 +101,7 @@ jobs:
             print('installed at', os.path.dirname(thinkpad_settings.__file__))")
           dnf remove -y thinkpad-settings
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: rpm-${{ github.sha }}
           path: dist/
