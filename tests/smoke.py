@@ -118,6 +118,20 @@ def run(app):
     ]:
         check(f"humanise {raw}", _humanise(raw) == expected, _humanise(raw))
 
+    # The catalog only covers the machine it was captured on. On any other
+    # model an uncatalogued password/lock/permanent setting must still be
+    # treated as dangerous, or it would silently skip confirmation.
+    for raw, want_danger in [
+        ("SupervisorPassword", True), ("LockBIOSSetting", True),
+        ("TpmClearRequest", True), ("SecureWipeDrive", True),
+        ("AbsoluteModule", True), ("BootOrderLockAlt", True),
+        ("BlockSleep", False), ("ClockingMode", False), ("BlockSid", False),
+        ("SGXControl", False), ("SATAControllerMode", False),
+        ("DiscreteGraphicsMode", False),
+    ]:
+        got = metadata.get(raw).risk == metadata.RISK_DANGER
+        check(f"uncatalogued {raw} danger={want_danger}", got == want_danger, str(got))
+
     # Sidebar selection: exercises the row.category attribute and the
     # collapsed-mode navigation, neither of which the render loop touches.
     win._search = ""

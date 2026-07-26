@@ -708,6 +708,21 @@ class MainWindow(Adw.ApplicationWindow):
         )
 
         warnings = []
+
+        # Catches an irreversible value on ANY machine, catalogued or not.
+        # Lenovo spells it PermanentlyDisable; other vendors may differ, but
+        # anything containing "permanent" deserves a stop.
+        irreversible = sorted(
+            name for name, value in self._staged.items() if "permanent" in value.lower()
+        )
+        for name in irreversible:
+            warnings.append(
+                f"“{metadata.get(name).label}” is being set to "
+                f"“{self._staged[name]}”. Values like this are a one-way fuse — "
+                "they usually cannot be undone on this machine, even from BIOS "
+                "setup."
+            )
+
         boot_value = self._staged.get(bootorder.BOOT_ORDER)
         # Must be an identity check: removing every device serialises to "",
         # which is falsy, and that is the case most in need of the warning.

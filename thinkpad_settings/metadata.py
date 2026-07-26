@@ -150,8 +150,25 @@ def _humanise(raw: str) -> str:
     return text if text[0].isupper() else text[:1].upper() + text[1:]
 
 
+# Name fragments that mark an uncatalogued attribute as potentially
+# lock-you-out dangerous. The catalog only covers the machine it was captured
+# on, so on any other model these are the last line of defence: without them an
+# unknown password or permanent-disable setting would be treated as merely
+# "caution" and would not raise a confirmation.
+#
+# "lock" carries a negative lookbehind because plenty of harmless names embed
+# it: BlockSleep, BlockSid, ClockingMode. A false positive here only costs an
+# extra confirmation, so the list otherwise errs toward catching too much.
+_DANGER_HINTS = re.compile(
+    r"password|(?<![bc])lock|permanent|wipe|erase|tpm|securitychip"
+    r"|absolute|computrace|bootorder|secureboot",
+    re.IGNORECASE,
+)
+
+
 def _derive(name: str) -> SettingMeta:
     """Best-effort metadata for an attribute missing from the catalog."""
+    dangerous = bool(_DANGER_HINTS.search(name))
     return SettingMeta(
         name=name,
         label=_humanise(name),
@@ -162,8 +179,14 @@ def _derive(name: str) -> SettingMeta:
         ),
         category=UNCATEGORISED,
         # Unknown means unknown: warn rather than imply it is safe to flip.
-        risk=RISK_CAUTION,
-        risk_note="Not catalogued — its effect on this machine is unverified.",
+        risk=RISK_DANGER if dangerous else RISK_CAUTION,
+        risk_note=(
+            "Not catalogued, and its name suggests it controls passwords, "
+            "locking or the security chip. Check your firmware documentation "
+            "before changing it."
+            if dangerous
+            else "Not catalogued — its effect on this machine is unverified."
+        ),
     )
 
 
