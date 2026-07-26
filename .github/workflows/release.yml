@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build release packages
+    runs-on: ubuntu-latest
+    container: fedora:44
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      exists: ${{ steps.meta.outputs.exists }}
+
+    steps:
+      - name: Install toolchain
+        run: |
+          dnf install -y --setopt=install_weak_deps=False \
+            git-core rpm-build rpmdevtools rpmlint python3-devel \
+            pyproject-rpm-macros desktop-file-utils libappstream-glib \
+            python3-gobject gtk4 libadwaita xorg-x11-server-Xvfb
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mark workspace safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Read version and check the tag is free
+        id: meta
+        run: |
+          version=$(sed -n 's/^Version:[[:space:]]*//p' thinkpad-settings.spec)
+          if [ -z "$version" ]; then
+            echo "Could not read Version from the spec" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          # Every version in the tree must agree, or the release would ship
+          # packages whose About dialog disagrees with its own filename.
+          grep -q "^version = \"$version\"" pyproject.toml \
+            || { echo "pyproject.toml disagrees with the spec ($version)" >&2; exit 1; }
+          grep -q "^VERSION = \"$version\"" thinkpad_settings/app.py \
+            || { echo "app.py disagrees with the spec ($version)" >&2; exit 1; }
+          grep -q "release version=\"$version\"" \
+            data/com.rabeei.ThinkPadSettings.metainfo.xml \
+            || { echo "metainfo.xml disagrees with the spec ($version)" >&2; exit 1; }
+
+          # Re-pushing main without a version bump should be a no-op, not a
+          # failed run.
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag v$version already exists — nothing to release."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate packaging metadata
+        if: steps.meta.outputs.exists == 'false'
+        run: |
+          desktop-file-validate data/com.rabeei.ThinkPadSettings.desktop
+          appstream-util validate-relax --nonet \
+            data/com.rabeei.ThinkPadSettings.metainfo.xml
+          python3 tests/check_catalog.py
+
+      - name: Run test suite
+        if: steps.meta.outputs.exists == 'false'
+        run: xvfb-run -a python3 tests/smoke.py
+
+      - name: Build RPM
+        if: steps.meta.outputs.exists == 'false'
+        run: ./build-rpm.sh
+
+      - name: Collect packages
+        if: steps.meta.outputs.exists == 'false'
+        run: |
+          mkdir -p dist
+          cp ~/rpmbuild/RPMS/noarch/*.rpm dist/
+          cp ~/rpmbuild/SRPMS/*.rpm dist/
+          (cd dist && sha256sum *.rpm > SHA256SUMS)
+          ls -la dist/
+
+      - uses: actions/upload-artifact@v4
+        if: steps.meta.outputs.exists == 'false'
+        with:
+          name: release-packages
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: needs.build.outputs.exists == 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-packages
+          path: dist
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          notes=$(mktemp)
+          {
+            echo "## Install"
+            echo
+            echo '```'
+            echo "sudo dnf install ./thinkpad-settings-${VERSION}-1.fc44.noarch.rpm"
+            echo '```'
+            echo
+            echo "Or build from the source RPM."
+            echo
+            echo "### Checksums"
+            echo
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+          } > "$notes"
+
+          gh release create "v${VERSION}" \
+            --title "v${VERSION}" \
+            --notes-file "$notes" \
+            --target "${GITHUB_SHA}" \
+            dist/*.rpm dist/SHA256SUMS

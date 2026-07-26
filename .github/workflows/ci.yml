@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, beta, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and test on Fedora
+    runs-on: ubuntu-latest
+    container: fedora:44
+
+    steps:
+      # git must exist before checkout so the action clones instead of falling
+      # back to a tarball download without history.
+      - name: Install toolchain
+        run: |
+          dnf install -y --setopt=install_weak_deps=False \
+            git-core rpm-build rpmdevtools rpmlint python3-devel \
+            pyproject-rpm-macros desktop-file-utils libappstream-glib \
+            python3-gobject gtk4 libadwaita xorg-x11-server-Xvfb
+
+      - uses: actions/checkout@v4
+
+      - name: Mark workspace safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Validate desktop entry and AppStream metadata
+        run: |
+          desktop-file-validate data/com.rabeei.ThinkPadSettings.desktop
+          appstream-util validate-relax --nonet \
+            data/com.rabeei.ThinkPadSettings.metainfo.xml
+
+      - name: Check catalog integrity
+        run: python3 tests/check_catalog.py
+
+      # GTK needs a display even though no window is ever presented.
+      - name: Run test suite
+        run: xvfb-run -a python3 tests/smoke.py
+
+      - name: Build RPM
+        run: ./build-rpm.sh
+
+      - name: Collect packages
+        run: |
+          mkdir -p dist
+          cp ~/rpmbuild/RPMS/noarch/*.rpm dist/
+          cp ~/rpmbuild/SRPMS/*.rpm dist/
+          (cd dist && sha256sum *.rpm > SHA256SUMS)
+          ls -la dist/
+
+      - name: Verify the built package installs and runs
+        run: |
+          dnf install -y ./dist/thinkpad-settings-*.noarch.rpm
+          rpm -q thinkpad-settings
+          test -x /usr/bin/thinkpad-settings
+          test -f /usr/share/applications/com.rabeei.ThinkPadSettings.desktop
+          test -f /usr/share/man/man1/thinkpad-settings.1.gz
+          # Import from site-packages, not the checkout.
+          (cd /tmp && python3 -c "import thinkpad_settings, os; \
+            assert 'site-packages' in thinkpad_settings.__file__, thinkpad_settings.__file__; \
+            print('installed at', os.path.dirname(thinkpad_settings.__file__))")
+          dnf remove -y thinkpad-settings
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm-${{ github.sha }}
+          path: dist/
+          retention-days: 30
+          if-no-files-found: error

@@ -3,56 +3,50 @@
 A GTK4 desktop app for reading and changing Lenovo ThinkPad firmware settings
 from inside Linux, without rebooting into BIOS setup.
 
-Built because Lenovo ships no GUI for this on Linux. The kernel's `think_lmi`
-driver has exposed these attributes for years, but the only ways to reach them
-were raw `sysfs` writes or `fwupdmgr` on the command line — both of which
-require knowing the exact attribute name and the exact spelling of the value.
+[![CI](https://github.com/ali-commits/thinkpad-settings/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/ali-commits/thinkpad-settings/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ali-commits/thinkpad-settings?include_prereleases)](https://github.com/ali-commits/thinkpad-settings/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+Lenovo ships no GUI for this on Linux. The kernel's `think_lmi` driver has
+exposed these attributes for years, but the only ways to reach them were raw
+`sysfs` writes or `fwupdmgr` on the command line — both requiring you to know
+the exact attribute name *and* the exact spelling of the value.
 
 ## What it does
 
 - Lists every firmware attribute your machine exposes, grouped into readable
-  categories, with a plain-English description of what each one actually does
-  on Linux.
+  categories, each with a plain-English description of what it actually does
+  **on Linux** — not a restatement of its name.
 - **Stages changes and writes them in one batch**, so you authenticate once no
   matter how many settings you edit.
-- Warns before anything that can lock you out — BIOS passwords, `LockBIOSSetting`,
-  `BootOrderLock`, disabling the TPM on a machine that may use it to unlock an
-  encrypted disk, and the settings whose `PermanentlyDisable` value cannot be
-  undone.
-- Gives `BootOrder` a real reorder editor instead of a combo box. The firmware
-  stores it as a colon-separated ordered list, not a single choice, so a combo
-  box would silently reduce your boot order to one device.
-- Tells you when changes are staged but not yet applied, and offers to restart.
+- **Warns before anything that can lock you out**: BIOS passwords,
+  `LockBIOSSetting`, `BootOrderLock`, disabling the TPM on a machine that may
+  use it to unlock an encrypted disk, and every value whose
+  `PermanentlyDisable` cannot be undone.
+- Search across all settings.
+- Tells you when changes are staged but not yet active, and offers to restart.
 
 ## Requirements
 
 - A Lenovo ThinkPad whose firmware exposes settings through `think_lmi`
-  (check: `ls /sys/class/firmware-attributes/thinklmi/attributes/`)
-- `fwupd` 1.8+ (this was developed against 2.1.6)
+  — check with `ls /sys/class/firmware-attributes/thinklmi/attributes/`
+- `fwupd` 1.8+ (developed against 2.1.6)
 - GTK 4, libadwaita 1.4+, PyGObject
-
-On Fedora:
-
-```
-sudo dnf install python3-gobject gtk4 libadwaita fwupd
-```
 
 ## Install
 
-### RPM (recommended on Fedora)
+### RPM (Fedora)
+
+Download the `.rpm` from [Releases](https://github.com/ali-commits/thinkpad-settings/releases), then:
 
 ```
-sudo dnf install ./thinkpad-settings-0.1.0-1.fc44.noarch.rpm
+sudo dnf install ./thinkpad-settings-*.noarch.rpm
 ```
 
-Dependencies are resolved by dnf, the launcher appears in Activities, and
-`man thinkpad-settings` works. To remove it:
+Dependencies resolve through dnf, the launcher appears in Activities, and
+`man thinkpad-settings` works. Remove it with `sudo dnf remove thinkpad-settings`.
 
-```
-sudo dnf remove thinkpad-settings
-```
-
-To build the RPM yourself:
+### Build the RPM yourself
 
 ```
 sudo dnf install rpm-build rpmdevtools rpmlint python3-devel \
@@ -63,16 +57,14 @@ sudo dnf install rpm-build rpmdevtools rpmlint python3-devel \
 ### Without a package manager
 
 ```
-./install.sh
+./install.sh      # installs under $HOME only, no root
+./uninstall.sh    # undoes it
 ```
 
-Installs entirely under `$HOME` — no root, nothing in `/usr`. Undo with
-`./uninstall.sh`.
-
-Do not use both at once: the two install the same desktop ID, and the copy in
+Don't use both at once — they install the same desktop ID, and the copy in
 `~/.local/share/applications` wins over the packaged one.
 
-Either way, your firmware settings are never touched by installing or removing.
+Installing or removing never touches your firmware settings.
 
 ## How it works
 
@@ -83,44 +75,74 @@ Everything goes through fwupd's D-Bus API on the system bus:
 | Read | `org.freedesktop.fwupd.GetBiosSettings` → polkit `auth_admin_keep` |
 | Write | `org.freedesktop.fwupd.SetBiosSettings` → polkit `auth_admin` |
 
-The app itself runs unprivileged. Nothing is setuid, and it never invokes
-`sudo` or `pkexec` — polkit prompts through GNOME's own authentication dialog.
+The app runs unprivileged. Nothing is setuid and it never invokes `sudo` or
+`pkexec` — polkit prompts through GNOME's own dialog.
 
-Going through fwupd rather than writing `sysfs` directly means the value is
-validated against the firmware's allowed list before it is written, and fwupd
-handles committing via `save_settings`. It also means this should work on any
-vendor with a `firmware-attributes` driver, though only Lenovo/`think_lmi` has
-been tested.
+Going through fwupd rather than writing `sysfs` directly means values are
+validated against the firmware's allowed list before being written, and fwupd
+handles committing via `save_settings`.
 
-`SetBiosSettings` takes a dictionary, which is what makes single-prompt batching
-possible.
+`SetBiosSettings` takes a *dictionary*, which is what makes single-prompt
+batching possible.
 
-## Tests
+### The one non-obvious part
+
+fwupd will not consult polkit **at all** unless the client first declares
+`FwupdFeatureFlags.ALLOW_AUTHENTICATION` (`256`) via `SetFeatureFlags` on the
+same connection. A client that skips it gets an immediate *successful* reply
+with every value silently stripped out — no prompt, no error. Rendering that
+reply naively shows a window full of settings that all read "Disabled", which
+is fiction. This app declares the flag, and independently treats a
+values-withheld reply as an authentication failure rather than as data.
+
+## Caveats
+
+- **Almost every setting needs a reboot.** A banner shows while changes are
+  staged.
+- **The boot order cannot be changed here.** fwupd validates a written value
+  against the attribute's permitted values; `BootOrder` holds a colon-separated
+  *sequence* while its permitted values are single device codes, so every
+  reordering is rejected — and one rejected entry aborts the whole batch. It is
+  shown read-only; change it in BIOS setup (F1).
+- **fwupd caches settings at daemon startup.** If you change something in BIOS
+  setup or via `sysfs`, fwupd reports the old value until restarted. Refresh
+  re-reads fwupd but cannot defeat fwupd's own cache — run
+  `sudo systemctl restart fwupd`, then Refresh.
+- Settings the firmware marks read-only (such as `SecureBoot`) are shown but
+  not editable here.
+- If a supervisor password is set in BIOS, writes may be rejected; this app
+  cannot supply that password.
+
+## Other ThinkPads, other vendors
+
+The **code** is generic: it renders whatever fwupd reports and hardcodes no
+attribute names, vendor or model. It will run on any machine with a kernel
+`firmware-attributes` driver, including Dell (`dell-wmi-sysman`) and HP
+(`hp-bioscfg`).
+
+The **catalog** — the friendly labels, Linux-specific descriptions, categories
+and risk ratings — was captured on a ThinkPad T14 Gen 3 and covers its 104
+attributes. Anything outside it still renders, with a name derived from the raw
+attribute and marked as uncatalogued. Since Lenovo reuses attribute names
+across the ThinkPad line, coverage on other ThinkPads should be high; on a Dell
+it would be near zero and you'd get a working editor with no explanations.
+
+Uncatalogued attributes whose names suggest passwords, locking, TPM or secure
+wipe are treated as dangerous regardless, and any value containing "permanent"
+warns on any hardware.
+
+Want it tuned for your model? Open an issue with the output of
+`sudo fwupdmgr get-bios-settings --json`.
+
+## Development
 
 ```
 python3 tests/smoke.py
 ```
 
-Builds the real window against a captured attribute dump from a T14 Gen 3, so
-it needs no Lenovo hardware, no fwupd and no authentication — only a display.
-It covers parsing, every category rendering, search, staging and unstaging,
-the batched apply payload, revert, boot-order round-tripping, danger-ranking,
-D-Bus error classification, and that merely *building* the UI never stages a
-change (libadwaita's `Adw.ComboRow` fires `notify::selected` when its model is
-set, indistinguishable from a click).
+90 checks against a captured attribute dump — no Lenovo hardware, no fwupd and
+no authentication needed, only a display. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Caveats
+## License
 
-- **Almost every setting needs a reboot** to take effect. The app shows a banner
-  when changes are staged.
-- **`fwupd` caches settings at daemon startup.** If you change a setting outside
-  this app — in BIOS setup, or by writing `sysfs` directly — fwupd keeps
-  reporting the old value until the daemon restarts, and this app can only show
-  what fwupd tells it. Refresh re-reads fwupd, but it cannot defeat fwupd's own
-  cache. If a value looks wrong, run `sudo systemctl restart fwupd` and then
-  Refresh.
-- Settings marked read-only by the firmware (such as `SecureBoot`) are shown but
-  cannot be edited here. Change those in BIOS setup with F1 at boot.
-- If a supervisor password is set in BIOS, writes may be rejected. This app
-  cannot supply that password.
-- Some settings are genuinely irreversible from Linux. Read the warnings.
+MIT — see [LICENSE](LICENSE).
