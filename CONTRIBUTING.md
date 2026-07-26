@@ -161,11 +161,15 @@ attribute:
 
 ### Adding a model
 
-Dump the machine and attach it:
+Dump the machine and attach it. Either use **Export settings** in the app menu
+(Ctrl+E), or from a terminal:
 
 ```
 sudo fwupdmgr get-bios-settings --json > t495-settings.json
 ```
+
+Both write the same thing — the export is fwupd's reply verbatim, not a
+reconstruction, so the two files are interchangeable.
 
 Drop it in as `tests/fixture-<model>.json`. The validator and the test suite
 pick up `tests/fixture-*.json` automatically and will then require that every

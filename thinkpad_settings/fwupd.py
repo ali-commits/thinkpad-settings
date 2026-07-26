@@ -232,6 +232,10 @@ class FwupdClient:
         self._bus: Gio.DBusConnection | None = None
         self._announced = False
         self._cancellable = Gio.Cancellable()
+        # The reply exactly as fwupd sent it. Kept so an export is byte-faithful
+        # to what the daemon reported rather than a reconstruction from the
+        # parsed objects, which would quietly drop fields we happen not to use.
+        self.last_raw: list[dict[str, object]] = []
 
     def cancel(self) -> None:
         """Abandon any call in flight, e.g. when the window is closing."""
@@ -312,7 +316,8 @@ class FwupdClient:
                     on_error(_classify(exc))
                     return
 
-                settings = _parse(reply.unpack()[0])
+                raw = reply.unpack()[0]
+                settings = _parse(raw)
                 # An unauthorised read is not reported as an error: the reply
                 # succeeds and lists every attribute with its value withheld.
                 # Detect that here so the UI asks for authentication instead of
@@ -327,6 +332,7 @@ class FwupdClient:
                         )
                     )
                     return
+                self.last_raw = raw
                 on_success(settings)
 
             bus.call(

@@ -29,6 +29,14 @@ is invoked.
 The program takes no options of its own. Standard GTK options such as
 .B \-\-display
 are accepted.
+.SH EXPORTING
+.B Export settings
+in the application menu (Ctrl+E) writes every attribute exactly as
+.BR fwupd (8)
+reported it, in the same JSON form as
+.BR "fwupdmgr get-bios-settings --json" .
+Useful as a snapshot to compare against before changing anything, and as the
+file to attach when asking for an unsupported model to be catalogued.
 .SH AUTHENTICATION
 Two polkit actions are involved:
 .TP

@@ -26,6 +26,9 @@ the exact attribute name *and* the exact spelling of the value.
 - **Fuzzy search** ranked by relevance — `kbbeep` finds Keyboard beep, `wol`
   finds Wake on LAN, `vt` finds both VT-x and VT-d.
 - Tells you when changes are staged but not yet active, and offers to restart.
+- **Export settings** (Ctrl+E) — writes exactly what fwupd reported, so it works
+  both as a snapshot to compare against before you change anything, and as the
+  file to attach when asking for another model to be catalogued.
 
 ## Requirements
 
@@ -148,8 +151,9 @@ Uncatalogued attributes whose names suggest passwords, locking, TPM or secure
 wipe are treated as dangerous regardless, and any value containing "permanent"
 warns on any hardware.
 
-Want it tuned for your model? Open an issue with the output of
-`sudo fwupdmgr get-bios-settings --json`.
+Want it tuned for your model? Use **Export settings** in the app menu and open
+an issue with the file — or, from a terminal,
+`sudo fwupdmgr get-bios-settings --json`. Both produce the same thing.
 
 ## Development
 
@@ -157,7 +161,7 @@ Want it tuned for your model? Open an issue with the output of
 python3 tests/smoke.py
 ```
 
-107 checks against captured attribute dumps — no Lenovo hardware, no fwupd and
+111 checks against captured attribute dumps — no Lenovo hardware, no fwupd and
 no authentication needed, only a display. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
