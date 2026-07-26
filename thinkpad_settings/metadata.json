@@ -1,5 +1,59 @@
 [
  {
+  "name": "AMDPowerNowTechnology",
+  "category": "CPU & Virtualization",
+  "label": "AMD PowerNow! (CPU frequency scaling)",
+  "description": "Enables dynamic CPU frequency and voltage scaling, the AMD counterpart to Intel SpeedStep. Linux drives it through the amd-pstate or acpi-cpufreq driver; disabling it pins the CPU to a fixed operating point, which costs battery life at idle and can cost peak speed under load.",
+  "risk": "caution",
+  "risk_note": "disabling removes the OS's ability to scale CPU frequency, so idle power draw and heat both rise",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "AMDPowerNowTechnologyAC",
+  "category": "Power & Thermal",
+  "label": "AMD PowerNow! bias (on AC power)",
+  "description": "Chooses whether the firmware's frequency-scaling policy favours speed or battery life while the laptop is plugged in. This sits beneath the OS, so GNOME's power profiles still apply on top of it.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "MaximumPerformance",
+    "label": "Maximum performance"
+   },
+   {
+    "value": "BatteryOptimized",
+    "label": "Battery optimized"
+   }
+  ]
+ },
+ {
+  "name": "AMDPowerNowTechnologyBattery",
+  "category": "Power & Thermal",
+  "label": "AMD PowerNow! bias (on battery)",
+  "description": "The same frequency-scaling bias as the AC setting, applied while running on battery. Battery optimized is the usual choice here; Maximum performance keeps clocks higher at the cost of runtime and heat.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "MaximumPerformance",
+    "label": "Maximum performance"
+   },
+   {
+    "value": "BatteryOptimized",
+    "label": "Battery optimized"
+   }
+  ]
+ },
+ {
   "name": "AMTControl",
   "category": "Firmware & Management",
   "label": "Intel AMT (out-of-band remote management)",
@@ -172,6 +226,42 @@
   ]
  },
  {
+  "name": "AmdCbsCmnMemTsmeDdr4",
+  "category": "Security",
+  "label": "AMD Transparent Secure Memory Encryption (TSME)",
+  "description": "Encrypts the contents of DDR4 system memory in the memory controller, transparently to the operating system. It defends against physical attacks that read RAM directly, such as cold-boot or bus probing, and needs no support from Fedora. Expect a small memory-bandwidth cost.",
+  "risk": "caution",
+  "risk_note": "enabling changes how memory is initialised and on some firmware reduces usable bandwidth; it does not protect a running system, only physical access to the RAM",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "AmdVt",
+  "category": "CPU & Virtualization",
+  "label": "AMD-V (CPU virtualization)",
+  "description": "Enables AMD's SVM hardware virtualization extensions, the AMD equivalent of Intel VT-x. Fedora needs this for /dev/kvm to appear, so GNOME Boxes, virt-manager/libvirt and qemu-kvm all depend on it; without it they either refuse to start or fall back to unusably slow software emulation.",
+  "risk": "caution",
+  "risk_note": "disabling removes /dev/kvm, so every KVM-based virtual machine on the system stops working",
+  "value_labels": [
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   },
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   }
+  ]
+ },
+ {
   "name": "BIOSPasswordAtBootDeviceList",
   "category": "Passwords",
   "label": "Require password for the F12 boot menu",
@@ -330,6 +420,18 @@
    {
     "value": "ExternalDisplay",
     "label": "External display"
+   },
+   {
+    "value": "HDMI",
+    "label": "HDMI port"
+   },
+   {
+    "value": "USBTypeCA",
+    "label": "USB-C port (left)"
+   },
+   {
+    "value": "USBTypeCB",
+    "label": "USB-C port (right)"
    }
   ]
  },
@@ -438,6 +540,10 @@
    {
     "value": "NODEV",
     "label": "No device"
+   },
+   {
+    "value": "PCILAN",
+    "label": "PCI LAN network boot"
    }
   ]
  },
@@ -548,12 +654,48 @@
   ]
  },
  {
+  "name": "ComputraceModuleActivation",
+  "category": "Security",
+  "label": "Computrace / Absolute anti-theft module",
+  "description": "Activates the firmware module that lets Absolute's anti-theft agent reinstall itself into the operating system even after a disk wipe. The agent is Windows-only, so on Fedora the module has nothing to inject.",
+  "risk": "danger",
+  "risk_note": "on many ThinkPads activation is a one-way step that cannot be undone from BIOS setup afterwards — do not enable it unless you actually run an Absolute subscription",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
   "name": "CoolQuietOnLap",
   "category": "Power & Thermal",
   "label": "Cool and quiet on lap",
   "description": "Selects a cooler, quieter thermal profile intended for on-lap use, keeping chassis surface temperature and fan noise down. The firmware applies this beneath the OS, so it holds no matter which Fedora power profile you use (power-profiles-daemon, TLP); the trade is less sustained performance under long heavy loads.",
   "risk": "safe",
   "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "DashEnabled",
+  "category": "Firmware & Management",
+  "label": "DASH out-of-band management",
+  "description": "Controls DASH, the DMTF standard for managing a machine over the network independently of the installed OS — the AMD counterpart to Intel AMT. On a personally owned laptop it does nothing useful and leaving it disabled is normal; it has no effect on how Linux itself runs.",
+  "risk": "caution",
+  "risk_note": "enabling exposes a management interface that answers on the network before the OS boots; on a company-managed machine disabling it cuts off the remote administration IT relies on",
   "value_labels": [
    {
     "value": "Disable",
@@ -590,6 +732,24 @@
   "description": "A Windows-oriented master switch that turns on and then pins a group of related firmware security settings (Secure Boot, virtualization/VT-d, TPM) for Windows Device Guard and Credential Guard. It offers nothing to Fedora, and because it forces Secure Boot on and locks the related options it can leave a machine that boots with Secure Boot off unable to start at all.",
   "risk": "danger",
   "risk_note": "forces Secure Boot on and pins related security settings, so a Fedora install that boots unsigned or third-party kernel modules can stop booting and the options cannot simply be flipped back",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "EcResetDetection",
+  "category": "Security",
+  "label": "Embedded controller reset detection",
+  "description": "A firmware option relating to detection of embedded-controller resets. Its precise effect on this model is not documented by Lenovo and has not been verified, so only the name and its two permitted values are certain here.",
+  "risk": "caution",
+  "risk_note": "not verified on real hardware — its effect is unknown, so treat any change as untested",
   "value_labels": [
    {
     "value": "Disable",
@@ -662,6 +822,24 @@
   "description": "Turns the machine's built-in wired Ethernet controller on or off at the firmware level. Disabled, the NIC is never presented to Fedora at all — nothing in `ip link` or `lspci`, no PXE/network boot and no Wake on LAN — and the only way to get it back is BIOS setup.",
   "risk": "caution",
   "risk_note": "wired networking disappears completely from Linux and can only be restored by entering BIOS setup (F1)",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "EthernetLANOptionROM",
+  "category": "Network",
+  "label": "Ethernet option ROM (PXE support at startup)",
+  "description": "Loads the onboard network adapter's option ROM during power-on, which is what makes PXE network boot possible. With it disabled the machine still has working Ethernet once Linux is running — the driver is the kernel's — but cannot boot from the network, and POST is slightly quicker.",
+  "risk": "caution",
+  "risk_note": "disabling removes network boot, so a machine that relies on PXE for recovery or installation will no longer start that way",
   "value_labels": [
    {
     "value": "Disable",
@@ -1134,6 +1312,24 @@
   ]
  },
  {
+  "name": "LidSensor",
+  "category": "Power & Thermal",
+  "label": "Lid open/close sensor",
+  "description": "Reports lid state to the operating system. Fedora uses it for the close-lid action, so with the sensor disabled closing the lid no longer suspends or blanks the screen and the machine keeps running.",
+  "risk": "caution",
+  "risk_note": "with the sensor off, closing the lid does not suspend — a laptop put into a bag can keep running and overheat",
+  "value_labels": [
+   {
+    "value": "Enable",
+    "label": "Enabled"
+   },
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   }
+  ]
+ },
+ {
   "name": "LockBIOSSetting",
   "category": "Security",
   "label": "Lock BIOS settings",
@@ -1170,6 +1366,24 @@
    {
     "value": "Second",
     "label": "Use the system's second MAC address"
+   }
+  ]
+ },
+ {
+  "name": "MemoryCardSlotAccess",
+  "category": "Devices & Ports",
+  "label": "SD/media card reader",
+  "description": "Enables the built-in memory card reader. With it disabled the slot is invisible to Linux — no device appears and nothing mounts when a card is inserted.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
    }
   ]
  },
@@ -1328,6 +1542,10 @@
    {
     "value": "NODEV",
     "label": "No device"
+   },
+   {
+    "value": "PCILAN",
+    "label": "PCI LAN network boot"
    }
   ]
  },
@@ -1538,6 +1756,24 @@
    {
     "value": "Windows10",
     "label": "Windows 10 (Modern Standby / s2idle)"
+   }
+  ]
+ },
+ {
+  "name": "SmartCardSlotAccess",
+  "category": "Devices & Ports",
+  "label": "Smart card reader",
+  "description": "Enables the built-in smart card reader. With it disabled the reader does not appear to Linux, so pcscd sees no device and anything depending on the card stops working.",
+  "risk": "caution",
+  "risk_note": "if a smart card is used for login, SSH keys or disk unlocking, disabling the reader removes that method",
+  "value_labels": [
+   {
+    "value": "Disable",
+    "label": "Disabled"
+   },
+   {
+    "value": "Enable",
+    "label": "Enabled"
    }
   ]
  },
@@ -1780,6 +2016,24 @@
    {
     "value": "Enable",
     "label": "Enabled"
+   }
+  ]
+ },
+ {
+  "name": "UMAFramebufferSize",
+  "category": "Input & Display",
+  "label": "Integrated graphics memory (UMA frame buffer)",
+  "description": "How much system RAM is reserved up-front for the integrated Radeon graphics. The amount chosen is taken away from what Linux can use for everything else; the driver can allocate beyond it dynamically, so the larger setting is rarely needed.",
+  "risk": "safe",
+  "risk_note": "",
+  "value_labels": [
+   {
+    "value": "2GB",
+    "label": "2 GB"
+   },
+   {
+    "value": "1GB",
+    "label": "1 GB"
    }
   ]
  },
@@ -2049,6 +2303,10 @@
    {
     "value": "Enable",
     "label": "Enabled"
+   },
+   {
+    "value": "ACOnlyS3Enabled",
+    "label": "AC power only, from S3 sleep"
    }
   ]
  },

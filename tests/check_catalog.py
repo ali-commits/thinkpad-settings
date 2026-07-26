@@ -21,7 +21,10 @@ sys.path.insert(0, str(HERE.parent))
 from thinkpad_settings import metadata
 
 CATALOG = HERE.parent / "thinkpad_settings" / "metadata.json"
-FIXTURE = HERE / "fixture-t14gen3.json"
+# One dump per contributed machine. The catalog is a union across all of them:
+# a T495 has attributes a T14 Gen 3 does not and vice versa, so an entry only
+# has to be justified by *some* fixture, not by every one.
+FIXTURES = sorted(HERE.glob("fixture-*.json"))
 
 # Phrases that pin a description to one machine's current state. The reader's
 # machine differs, and the sentence can end up contradicting the value shown in
@@ -37,12 +40,18 @@ problems: list[str] = []
 
 def main() -> int:
     catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
-    firmware = json.loads(FIXTURE.read_text(encoding="utf-8"))["BiosSettings"]
 
-    permitted = {
-        item["Name"]: tuple(item.get("BiosSettingPossibleValues") or ())
-        for item in firmware
-    }
+    if not FIXTURES:
+        print("No fixtures found", file=sys.stderr)
+        return 1
+
+    # name -> set of every value any known machine permits for it
+    permitted: dict[str, set[str]] = {}
+    for fixture in FIXTURES:
+        for item in json.loads(fixture.read_text(encoding="utf-8"))["BiosSettings"]:
+            permitted.setdefault(item["Name"], set()).update(
+                item.get("BiosSettingPossibleValues") or ()
+            )
 
     names = [entry["name"] for entry in catalog]
     duplicates = {n for n in names if names.count(n) > 1}
@@ -57,9 +66,7 @@ def main() -> int:
 
     unknown = set(names) - set(permitted)
     if unknown:
-        problems.append(
-            f"catalog entries not present in the firmware dump: {sorted(unknown)}"
-        )
+        problems.append(f"catalog entries no fixture accounts for: {sorted(unknown)}")
 
     for entry in catalog:
         name = entry["name"]
@@ -91,12 +98,20 @@ def main() -> int:
                 )
 
         if name in permitted:
-            labelled = [v["value"] for v in entry.get("value_labels") or []]
-            expected = list(permitted[name])
-            if labelled != expected:
+            labelled = {v["value"] for v in entry.get("value_labels") or []}
+            # Every value some machine permits needs wording. Order is not
+            # checked: rows are rendered in the order the firmware reports, and
+            # a label for a value this machine lacks is how another model is
+            # supported.
+            unlabelled = permitted[name] - labelled
+            if unlabelled:
                 problems.append(
-                    f"{name}: value_labels {labelled} do not match "
-                    f"firmware possible values {expected}"
+                    f"{name}: no label for permitted value(s) {sorted(unlabelled)}"
+                )
+            stray = labelled - permitted[name]
+            if stray:
+                problems.append(
+                    f"{name}: labels for value(s) no fixture permits {sorted(stray)}"
                 )
             for pair in entry.get("value_labels") or []:
                 if not pair.get("label", "").strip():
@@ -105,7 +120,10 @@ def main() -> int:
                     )
 
     print(f"catalog entries : {len(catalog)}")
-    print(f"firmware attrs  : {len(permitted)}")
+    print(f"known attributes: {len(permitted)} across {len(FIXTURES)} fixture(s)")
+    for fixture in FIXTURES:
+        count = len(json.loads(fixture.read_text(encoding="utf-8"))["BiosSettings"])
+        print(f"  {fixture.name}: {count}")
 
     if problems:
         print(f"\nFAILED — {len(problems)} problem(s):")
