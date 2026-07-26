@@ -1,0 +1,91 @@
+.TH THINKPAD\-SETTINGS 1 "2026-07-26" "thinkpad-settings 0.1.0" "User Commands"
+.SH NAME
+thinkpad\-settings \- edit ThinkPad firmware settings from the desktop
+.SH SYNOPSIS
+.B thinkpad\-settings
+.RI [ GTK\ OPTIONS ]
+.SH DESCRIPTION
+.B thinkpad\-settings
+is a graphical editor for the firmware (BIOS/UEFI) settings that a Lenovo
+ThinkPad exposes to Linux through the
+.B think_lmi
+kernel driver.
+.PP
+Settings are grouped into readable categories, each with a plain-English
+description of what the setting actually does under Linux. Changes are
+.I staged
+locally and written together when you press Apply, so you are asked to
+authenticate once no matter how many settings you edit.
+.PP
+The program runs unprivileged. All reads and writes go through
+.BR fwupd (8)
+on the system bus, and privilege is obtained through polkit, so nothing is
+setuid and neither
+.BR sudo (8)
+nor
+.BR pkexec (1)
+is invoked.
+.SH OPTIONS
+The program takes no options of its own. Standard GTK options such as
+.B \-\-display
+are accepted.
+.SH AUTHENTICATION
+Two polkit actions are involved:
+.TP
+.B org.freedesktop.fwupd.get\-bios\-settings
+Required to read values. Configured as
+.I auth_admin_keep
+by default, so you are asked once per session.
+.TP
+.B org.freedesktop.fwupd.set\-bios\-settings
+Required to write. Configured as
+.IR auth_admin ,
+so it prompts on every Apply.
+.PP
+If authentication is declined, fwupd returns the settings list with every
+value withheld rather than reporting an error. The program detects this and
+asks you to authenticate instead of displaying values it does not have.
+.SH CAVEATS
+.TP
+.B Most settings need a restart
+Firmware applies them during startup. A banner appears while changes are
+staged but not yet active.
+.TP
+.B fwupd caches settings at daemon startup
+If a setting is changed outside this program \(em in BIOS setup, or by writing
+to sysfs directly \(em fwupd keeps reporting the previous value until it is
+restarted. Run
+.B systemctl restart fwupd
+and then refresh.
+.TP
+.B The boot order cannot be changed here
+fwupd validates a written value against the attribute's list of permitted
+values.
+.B BootOrder
+holds a colon-separated sequence while its permitted values are single device
+codes, so every reordering is rejected. The current order is shown read-only;
+change it in BIOS setup by pressing F1 during startup.
+.TP
+.B Some settings are irreversible
+Values named
+.I PermanentlyDisable
+cannot be undone on the affected machine. These are marked in the interface and
+require confirmation.
+.SH FILES
+.TP
+.I /sys/class/firmware\-attributes/thinklmi/attributes/
+The kernel interface the settings ultimately come from. Read by fwupd, not by
+this program directly.
+.SH EXIT STATUS
+Returns 0 on normal exit.
+.SH SEE ALSO
+.BR fwupdmgr (1),
+.BR fwupd (8),
+.BR polkit (8)
+.PP
+The same settings can be inspected from a terminal with
+.BR "fwupdmgr get-bios-settings" .
+.SH BUGS
+Requires a machine whose firmware exposes settings through
+.BR think_lmi .
+Other vendors' firmware\-attributes drivers are untested.

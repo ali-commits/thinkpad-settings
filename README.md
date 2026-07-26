@@ -39,14 +39,40 @@ sudo dnf install python3-gobject gtk4 libadwaita fwupd
 
 ## Install
 
+### RPM (recommended on Fedora)
+
+```
+sudo dnf install ./thinkpad-settings-0.1.0-1.fc44.noarch.rpm
+```
+
+Dependencies are resolved by dnf, the launcher appears in Activities, and
+`man thinkpad-settings` works. To remove it:
+
+```
+sudo dnf remove thinkpad-settings
+```
+
+To build the RPM yourself:
+
+```
+sudo dnf install rpm-build rpmdevtools rpmlint python3-devel \
+    pyproject-rpm-macros desktop-file-utils libappstream-glib
+./build-rpm.sh
+```
+
+### Without a package manager
+
 ```
 ./install.sh
 ```
 
-Installs entirely under `$HOME` — no root, nothing in `/usr`. Then launch
-"ThinkPad BIOS Settings" from Activities, or run `thinkpad-settings`.
+Installs entirely under `$HOME` — no root, nothing in `/usr`. Undo with
+`./uninstall.sh`.
 
-To remove it: `./uninstall.sh`. Your firmware settings are left untouched.
+Do not use both at once: the two install the same desktop ID, and the copy in
+`~/.local/share/applications` wins over the packaged one.
+
+Either way, your firmware settings are never touched by installing or removing.
 
 ## How it works
 

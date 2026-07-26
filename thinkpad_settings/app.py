@@ -12,7 +12,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402
 
 APP_ID = "com.rabeei.ThinkPadSettings"
-VERSION = "1.0.0"
+VERSION = "0.1.0"
 
 # Kept in one place so the .desktop file, the About dialog and the window title
 # cannot drift apart.

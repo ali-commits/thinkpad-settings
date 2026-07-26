@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.rabeei.ThinkPadSettings</id>
+
+  <name>ThinkPad BIOS Settings</name>
+  <summary>Change ThinkPad firmware settings without rebooting into BIOS setup</summary>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <developer id="com.rabeei">
+    <name>Ali</name>
+  </developer>
+
+  <description>
+    <p>
+      A desktop editor for the firmware settings your Lenovo ThinkPad exposes to
+      Linux through the think_lmi kernel driver. Everything is read and written
+      through fwupd, so the application itself runs unprivileged and asks for
+      authentication the same way any other system tool does.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Every firmware attribute grouped into readable categories, each with a plain-English explanation of what it does on Linux</li>
+      <li>Changes are staged and written in a single batch, so you authenticate once no matter how many settings you edit</li>
+      <li>Clear warnings before anything that can lock you out of your own machine, such as disabling the TPM or a setting whose "permanently disable" value cannot be undone</li>
+      <li>Search across every setting</li>
+      <li>Tells you when changes are staged but not yet active, and offers to restart</li>
+    </ul>
+    <p>
+      Requires a Lenovo ThinkPad whose firmware exposes settings through the
+      think_lmi driver. Most settings take effect only after a restart.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">com.rabeei.ThinkPadSettings.desktop</launchable>
+
+  <categories>
+    <category>System</category>
+    <category>Settings</category>
+  </categories>
+
+  <keywords>
+    <keyword>BIOS</keyword>
+    <keyword>UEFI</keyword>
+    <keyword>firmware</keyword>
+    <keyword>ThinkPad</keyword>
+    <keyword>Lenovo</keyword>
+    <keyword>fwupd</keyword>
+  </keywords>
+
+  <provides>
+    <binary>thinkpad-settings</binary>
+  </provides>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="0.1.0" date="2026-07-26">
+      <description>
+        <p>First release.</p>
+      </description>
+    </release>
+  </releases>
+</component>
