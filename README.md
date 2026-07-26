@@ -23,7 +23,8 @@ the exact attribute name *and* the exact spelling of the value.
   `LockBIOSSetting`, `BootOrderLock`, disabling the TPM on a machine that may
   use it to unlock an encrypted disk, and every value whose
   `PermanentlyDisable` cannot be undone.
-- Search across all settings.
+- **Fuzzy search** ranked by relevance — `kbbeep` finds Keyboard beep, `wol`
+  finds Wake on LAN, `vt` finds both VT-x and VT-d.
 - Tells you when changes are staged but not yet active, and offers to restart.
 
 ## Requirements
@@ -156,7 +157,7 @@ Want it tuned for your model? Open an issue with the output of
 python3 tests/smoke.py
 ```
 
-90 checks against a captured attribute dump — no Lenovo hardware, no fwupd and
+107 checks against captured attribute dumps — no Lenovo hardware, no fwupd and
 no authentication needed, only a display. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License

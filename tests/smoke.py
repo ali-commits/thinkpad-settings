@@ -117,6 +117,33 @@ def run(app: Adw.Application) -> None:
         check(f"search {term!r}", bool(hits) == expect_some, f"{len(hits)} hits")
     win._search = ""
 
+    # Fuzzy search: the answer must come first, and the weak subsequence tail
+    # must be cut off. "wol" technically subsequence-matches most settings.
+    for query, expected_first, max_results in [
+        ("kbbeep", "KeyboardBeep", 3),
+        ("wol", "WakeOnLAN", 4),
+        ("thund", "ThunderboltAccess", 4),
+        ("sleep", "SleepState", 3),
+        ("tpm", "SecurityChip", 4),
+        ("virt", "VirtualizationTechnology", 5),
+    ]:
+        win._search = query
+        ranked = win._ranked()
+        top_name = ranked[0].name if ranked else None
+        check(
+            f"search {query!r} ranks {expected_first} first",
+            top_name == expected_first,
+            str(top_name),
+        )
+        check(
+            f"search {query!r} stays focused (<= {max_results})",
+            len(ranked) <= max_results,
+            f"{len(ranked)} results",
+        )
+    win._search = "zzzznotathing"
+    check("nonsense query returns nothing", win._ranked() == [])
+    win._search = ""
+
     # The fallback humaniser must never cut through a word. Parking acronyms by
     # plain substring replacement turned SATAControllerMode into
     # "Sat AC ontroller Mode" — a real attribute name on other ThinkPad models.
