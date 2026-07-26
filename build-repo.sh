@@ -73,7 +73,8 @@ EOF
 
 FINGERPRINT="$(gpg --show-keys --with-colons "$PUBKEY" 2>/dev/null \
     | awk -F: '/^fpr:/{print $10; exit}')"
-LATEST="$(basename "$(ls -1 "$OUT"/fedora/*.noarch.rpm | sort -V | tail -1)")"
+mapfile -t sorted_rpms < <(printf '%s\n' "$OUT"/fedora/*.noarch.rpm | sort -V)
+LATEST="$(basename "${sorted_rpms[-1]}")"
 VERSION="$(sed -E 's/^thinkpad-settings-([0-9.]+)-.*/\1/' <<<"$LATEST")"
 
 cat > "$OUT/index.html" <<EOF

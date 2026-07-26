@@ -11,17 +11,17 @@ Needs no hardware and no display.
 """
 
 import json
-import os
 import re
 import sys
+from pathlib import Path
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.dirname(HERE))
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
 
-from thinkpad_settings import metadata  # noqa: E402
+from thinkpad_settings import metadata
 
-CATALOG = os.path.join(HERE, os.pardir, "thinkpad_settings", "metadata.json")
-FIXTURE = os.path.join(HERE, "fixture-t14gen3.json")
+CATALOG = HERE.parent / "thinkpad_settings" / "metadata.json"
+FIXTURE = HERE / "fixture-t14gen3.json"
 
 # Phrases that pin a description to one machine's current state. The reader's
 # machine differs, and the sentence can end up contradicting the value shown in
@@ -36,10 +36,8 @@ problems: list[str] = []
 
 
 def main() -> int:
-    with open(CATALOG, encoding="utf-8") as handle:
-        catalog = json.load(handle)
-    with open(FIXTURE, encoding="utf-8") as handle:
-        firmware = json.load(handle)["BiosSettings"]
+    catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
+    firmware = json.loads(FIXTURE.read_text(encoding="utf-8"))["BiosSettings"]
 
     permitted = {
         item["Name"]: tuple(item.get("BiosSettingPossibleValues") or ())
@@ -53,20 +51,30 @@ def main() -> int:
 
     missing = set(permitted) - set(names)
     if missing:
-        problems.append(f"firmware attributes absent from the catalog: {sorted(missing)}")
+        problems.append(
+            f"firmware attributes absent from the catalog: {sorted(missing)}"
+        )
 
     unknown = set(names) - set(permitted)
     if unknown:
-        problems.append(f"catalog entries not present in the firmware dump: {sorted(unknown)}")
+        problems.append(
+            f"catalog entries not present in the firmware dump: {sorted(unknown)}"
+        )
 
     for entry in catalog:
         name = entry["name"]
 
         if entry.get("category") not in metadata.CATEGORY_ORDER:
-            problems.append(f"{name}: category {entry.get('category')!r} is not in CATEGORY_ORDER")
+            problems.append(
+                f"{name}: category {entry.get('category')!r} is not in CATEGORY_ORDER"
+            )
 
         risk = entry.get("risk")
-        if risk not in (metadata.RISK_SAFE, metadata.RISK_CAUTION, metadata.RISK_DANGER):
+        if risk not in (
+            metadata.RISK_SAFE,
+            metadata.RISK_CAUTION,
+            metadata.RISK_DANGER,
+        ):
             problems.append(f"{name}: invalid risk {risk!r}")
         elif risk != metadata.RISK_SAFE and not entry.get("risk_note", "").strip():
             problems.append(f"{name}: risk {risk!r} with no risk_note")
@@ -78,7 +86,9 @@ def main() -> int:
         for field in ("description", "risk_note"):
             match = STATEFUL.search(entry.get(field, ""))
             if match:
-                problems.append(f"{name}: {field} asserts machine state — {match.group(0)!r}")
+                problems.append(
+                    f"{name}: {field} asserts machine state — {match.group(0)!r}"
+                )
 
         if name in permitted:
             labelled = [v["value"] for v in entry.get("value_labels") or []]
@@ -90,7 +100,9 @@ def main() -> int:
                 )
             for pair in entry.get("value_labels") or []:
                 if not pair.get("label", "").strip():
-                    problems.append(f"{name}: empty label for value {pair.get('value')!r}")
+                    problems.append(
+                        f"{name}: empty label for value {pair.get('value')!r}"
+                    )
 
     print(f"catalog entries : {len(catalog)}")
     print(f"firmware attrs  : {len(permitted)}")

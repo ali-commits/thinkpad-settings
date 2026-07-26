@@ -1,0 +1,89 @@
+# Run once after cloning:
+#
+#   python3 -m venv --system-site-packages .venv
+#   PYGOBJECT_STUB_CONFIG=Gtk4,Gdk4 .venv/bin/pip install \
+#       ruff mypy pyrefly pre-commit pygobject-stubs
+#   .venv/bin/pre-commit install
+#
+# The type checkers run as `system` hooks against that venv rather than in
+# pre-commit's own isolated environments. They need pygobject-stubs built with
+# PYGOBJECT_STUB_CONFIG=Gtk4, and pre-commit cannot pass a build-time
+# environment variable when it installs a dependency — without it you get the
+# Gtk3 stubs and a flood of false errors.
+
+default_install_hook_types: [pre-commit, commit-msg]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.(rev|asc)$'
+      - id: end-of-file-fixer
+        exclude: '\.(rev|asc)$'
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      # The signing key must never be committed; the public half is fine.
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.0
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (strict)
+        entry: .venv/bin/mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+        args: [thinkpad_settings, tests]
+
+      - id: pyrefly
+        name: pyrefly
+        entry: .venv/bin/pyrefly
+        language: system
+        types: [python]
+        pass_filenames: false
+        args: [check]
+
+      - id: shellcheck
+        name: shellcheck
+        entry: shellcheck
+        language: system
+        types: [shell]
+
+      # The catalog is hand-edited and easy to get subtly wrong: a value label
+      # that no longer matches the firmware, or a description asserting one
+      # machine's state as fact. Cheap to check, so check every commit.
+      - id: catalog
+        name: catalog integrity
+        entry: python3 tests/check_catalog.py
+        language: system
+        pass_filenames: false
+        files: '^(thinkpad_settings/metadata\.(py|json)|tests/(check_catalog\.py|fixture-.*\.json))$'
+
+      # Four files hold the version and the release workflow refuses to publish
+      # when they disagree. Catching that here beats catching it mid-release.
+      - id: version-consistency
+        name: version consistency
+        entry: bash -c 'v=$(sed -n "s/^Version:[[:space:]]*//p" thinkpad-settings.spec);
+          grep -q "^version = \"$v\"" pyproject.toml &&
+          grep -q "^VERSION = \"$v\"" thinkpad_settings/app.py &&
+          grep -q "release version=\"$v\"" data/com.rabeei.ThinkPadSettings.metainfo.xml ||
+          { echo "Version files disagree with the spec ($v) — use ./bump-version.sh"; exit 1; }'
+        language: system
+        pass_filenames: false
+        files: '^(thinkpad-settings\.spec|pyproject\.toml|thinkpad_settings/app\.py|data/.*\.metainfo\.xml)$'

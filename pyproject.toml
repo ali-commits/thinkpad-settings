@@ -7,7 +7,7 @@ name = "thinkpad-settings"
 version = "0.1.0"
 description = "Edit ThinkPad firmware (BIOS) settings from the desktop"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 keywords = ["thinkpad", "lenovo", "bios", "uefi", "firmware", "fwupd", "gtk4"]
@@ -32,3 +32,71 @@ packages = ["thinkpad_settings"]
 
 [tool.setuptools.package-data]
 thinkpad_settings = ["metadata.json"]
+
+# ---------------------------------------------------------------------------
+# Linting and formatting
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+extend-exclude = [".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = [
+    "F",    # pyflakes
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "I",    # import sorting
+    "N",    # pep8 naming
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "A",    # shadowed builtins
+    "C4",   # comprehensions
+    "SIM",  # simplifications
+    "RET",  # return statements
+    "PTH",  # prefer pathlib
+    "ARG",  # unused arguments
+    "RUF",  # ruff's own rules
+    "ANN",  # missing annotations
+    "TID",  # tidy imports
+    "PIE",
+    "PL",   # pylint subset
+]
+ignore = [
+    # GTK callbacks legitimately take positional args they ignore; the widget
+    # and pspec parameters are dictated by the signal signature, not by us.
+    "ARG001",
+    "ARG002",
+    # Line-ending-in-comment noise from the deliberately prose-style comments.
+    "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The test script is a linear narrative, not a library: it uses long literal
+# tables and reaches into private members on purpose.
+"tests/*" = ["PLR0915", "PLR0912", "PLR2004", "ANN", "SLF001", "E402", "PLC0415"]
+
+[tool.ruff.lint.pylint]
+max-args = 8
+max-branches = 15
+max-statements = 60
+# _classify is a flat dispatch over fwupd's error taxonomy; collapsing its
+# returns into nested branches would make it harder to read, not easier.
+max-returns = 10
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+warn_no_return = true
+show_error_codes = true
+exclude = ['^\.venv/', '^build/', '^dist/']
+
+[tool.pyrefly]
+project-includes = ["thinkpad_settings", "tests"]
+project-excludes = ["**/.venv/**", "**/build/**", "**/dist/**"]
+python-version = "3.10"

@@ -56,6 +56,45 @@ sudo dnf install ~/rpmbuild/RPMS/noarch/thinkpad-settings-*.noarch.rpm
 If you also have the `./install.sh` copy in `~/.local`, remove it first with
 `./uninstall.sh` — it shares a desktop ID with the package and shadows it.
 
+## Linting, formatting and types
+
+The project is checked with **ruff** (lint + format), **mypy** in `strict` mode
+and **pyrefly**, all three clean with zero suppressions in the application code.
+
+```
+python3 -m venv --system-site-packages .venv
+PYGOBJECT_STUB_CONFIG=Gtk4,Gdk4 .venv/bin/pip install \
+    ruff mypy pyrefly pre-commit pygobject-stubs
+.venv/bin/pre-commit install
+```
+
+`PYGOBJECT_STUB_CONFIG=Gtk4,Gdk4` is **not optional**. `pygobject-stubs`
+generates Gtk3 stubs by default, and with those every GTK4 call in this codebase
+looks like an error. It is a build-time variable, which is also why mypy and
+pyrefly run as `system` pre-commit hooks against this venv rather than in
+pre-commit's own isolated environments — pre-commit cannot pass it through.
+
+```
+.venv/bin/ruff check thinkpad_settings tests
+.venv/bin/ruff format thinkpad_settings tests
+.venv/bin/mypy thinkpad_settings tests
+.venv/bin/pyrefly check
+```
+
+`pre-commit run --all-files` runs all of the above plus shellcheck, the catalog
+integrity check and the version-consistency check. CI runs the same commands.
+
+Strict typing on a PyGObject app is only meaningful because of the stubs, and it
+earns its keep: it was mypy that caught the code attaching Python attributes
+(`row.category`, `row.staged_badge`) directly to GObject widgets. That works at
+runtime but is invisible to the checker and breaks silently when a widget is
+recreated — the fix was a `CategoryRow` subclass and a badge dictionary keyed by
+setting name.
+
+Where a `# type: ignore` is unavoidable it carries the specific error code and a
+reason. There are three, all in the test suite, all because substituting a fake
+D-Bus client is the point of the test.
+
 ## Tests
 
 ```
