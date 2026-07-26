@@ -15,12 +15,22 @@ jobs:
     steps:
       # git must exist before checkout so the action clones instead of falling
       # back to a tarball download without history.
+      # Weak deps are off to keep the image small, which means a few things a
+      # workstation would have pulled in automatically must be named here:
+      #   python3-pip / python3-setuptools  %pyproject_buildrequires needs them
+      #                                     to resolve dynamic BuildRequires
+      #   gobject-introspection             ships cairo-1.0.typelib, without
+      #                                     which importing Gtk fails
+      #   xorg-x11-server-Xvfb              GTK needs a display even though the
+      #                                     tests never present a window
       - name: Install toolchain
         run: |
           dnf install -y --setopt=install_weak_deps=False \
-            git-core rpm-build rpmdevtools rpmlint python3-devel \
-            pyproject-rpm-macros desktop-file-utils libappstream-glib \
-            python3-gobject gtk4 libadwaita xorg-x11-server-Xvfb
+            git-core rpm-build rpmdevtools rpmlint \
+            python3-devel pyproject-rpm-macros python3-pip python3-setuptools \
+            desktop-file-utils libappstream-glib \
+            python3-gobject python3-cairo gobject-introspection \
+            gtk4 libadwaita xorg-x11-server-Xvfb
 
       - uses: actions/checkout@v4
 
@@ -51,14 +61,41 @@ jobs:
           (cd dist && sha256sum *.rpm > SHA256SUMS)
           ls -la dist/
 
+      # Package contents, checked against the RPM itself. The man page, README
+      # and licence are %doc/%license, and Fedora container images set
+      # tsflags=nodocs, so they are correctly built but never land on this
+      # filesystem — asserting on the payload tests the packaging rather than
+      # the container's install policy.
+      - name: Verify package contents
+        run: |
+          rpm=$(ls dist/thinkpad-settings-*.noarch.rpm)
+          contents=$(rpm -qpl "$rpm")
+          echo "$contents"
+          for path in \
+            /usr/bin/thinkpad-settings \
+            /usr/share/applications/com.rabeei.ThinkPadSettings.desktop \
+            /usr/share/icons/hicolor/scalable/apps/com.rabeei.ThinkPadSettings.svg \
+            /usr/share/metainfo/com.rabeei.ThinkPadSettings.metainfo.xml \
+            /usr/share/man/man1/thinkpad-settings.1.gz \
+            /usr/share/licenses/thinkpad-settings/LICENSE
+          do
+            grep -qx "$path" <<<"$contents" || { echo "MISSING from package: $path" >&2; exit 1; }
+          done
+          # Dependencies must be declared; Fedora has no virtual typelib()
+          # provides, so a dropped Requires would silently ship a broken app.
+          requires=$(rpm -qp --requires "$rpm")
+          for dep in python3-gobject gtk4 libadwaita fwupd; do
+            grep -q "^$dep" <<<"$requires" || { echo "MISSING Requires: $dep" >&2; exit 1; }
+          done
+
       - name: Verify the built package installs and runs
         run: |
           dnf install -y ./dist/thinkpad-settings-*.noarch.rpm
           rpm -q thinkpad-settings
           test -x /usr/bin/thinkpad-settings
           test -f /usr/share/applications/com.rabeei.ThinkPadSettings.desktop
-          test -f /usr/share/man/man1/thinkpad-settings.1.gz
-          # Import from site-packages, not the checkout.
+          test -f /usr/share/icons/hicolor/scalable/apps/com.rabeei.ThinkPadSettings.svg
+          # Import must resolve to site-packages, not the checkout.
           (cd /tmp && python3 -c "import thinkpad_settings, os; \
             assert 'site-packages' in thinkpad_settings.__file__, thinkpad_settings.__file__; \
             print('installed at', os.path.dirname(thinkpad_settings.__file__))")

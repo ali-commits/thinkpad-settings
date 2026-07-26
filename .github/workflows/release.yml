@@ -18,12 +18,15 @@ jobs:
       exists: ${{ steps.meta.outputs.exists }}
 
     steps:
+      # See ci.yml for why each of these is named explicitly with weak deps off.
       - name: Install toolchain
         run: |
           dnf install -y --setopt=install_weak_deps=False \
-            git-core rpm-build rpmdevtools rpmlint python3-devel \
-            pyproject-rpm-macros desktop-file-utils libappstream-glib \
-            python3-gobject gtk4 libadwaita xorg-x11-server-Xvfb
+            git-core rpm-build rpmdevtools rpmlint \
+            python3-devel pyproject-rpm-macros python3-pip python3-setuptools \
+            desktop-file-utils libappstream-glib \
+            python3-gobject python3-cairo gobject-introspection \
+            gtk4 libadwaita xorg-x11-server-Xvfb
 
       - uses: actions/checkout@v4
         with:
