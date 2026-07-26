@@ -134,17 +134,66 @@ escaped.
 client-side first so a single unwritable value can't silently kill every other
 staged change.
 
+## Versioning
+
+The version lives in **four** files, and the release workflow refuses to publish
+if they disagree:
+
+| File | Holds |
+|---|---|
+| `thinkpad-settings.spec` | `Version:`, `Release:`, `%changelog` |
+| `pyproject.toml` | `version = ` |
+| `thinkpad_settings/app.py` | `VERSION = ` (shown in About) |
+| `data/…metainfo.xml` | `<release version=…>` (shown in GNOME Software) |
+
+Don't edit them by hand:
+
+```
+./bump-version.sh 0.2.0
+./bump-version.sh 0.2.0 --message "Add support for X"
+```
+
+That updates all four, prepends a correctly formatted RPM changelog entry,
+prepends an AppStream release entry, re-validates the metainfo and applies the
+same consistency gate CI does — so a mismatch fails on your machine in a second
+rather than in CI two minutes later.
+
+### Which number to bump
+
+While the project is `0.x`, treat the **minor** as the breaking-change signal:
+
+- `0.1.0 → 0.1.1` — bug fixes, catalog wording, packaging that changes behaviour
+- `0.1.0 → 0.2.0` — new features, or anything that changes how existing settings
+  behave or are presented
+- `0.x → 1.0.0` — when the write path has been exercised on real hardware by
+  more than one person and the catalog is trusted
+
+### `Version` vs `Release`
+
+`Version` is the software. `Release` (the `-1` in `0.1.0-1.fc44`) is the
+*packaging* of that software. If nothing but the spec changed — a fixed
+dependency, a corrected file list — bump `Release` and leave `Version` alone:
+
+```
+./bump-version.sh 0.1.0 --release 2
+```
+
+Note the release workflow keys on `v<Version>` only, so a `Release`-only bump
+will **not** publish a new GitHub Release — the tag already exists. Rebuild and
+attach it manually, or bump the patch version instead if it needs publishing.
+
 ## Releasing
 
-1. Bump the version in `thinkpad-settings.spec` (`Version:` and `%changelog`),
-   `pyproject.toml`, `thinkpad_settings/app.py` and the `<release>` block in
-   `data/com.rabeei.ThinkPadSettings.metainfo.xml`. All four must agree.
-2. Merge to `main`.
-3. The release workflow builds the RPM and SRPM, creates the `v<version>` tag
-   and publishes a GitHub Release with both attached plus SHA-256 sums.
+1. `./bump-version.sh X.Y.Z` on `dev`, commit, push.
+2. PR `dev` → `beta`, let it soak.
+3. PR `beta` → `main`. `main` is protected: the PR cannot merge until
+   **Build and test on Fedora** passes, and direct pushes are rejected.
+4. Merging publishes automatically — the workflow builds the RPM and SRPM,
+   creates the `v<version>` tag, and attaches both plus `SHA256SUMS`.
 
-If the tag already exists the workflow skips publishing, so re-pushing `main`
-without a version bump is harmless.
+Never create the `v*` tag by hand; the workflow owns it. If the tag already
+exists the workflow skips publishing, so re-merging to `main` without a version
+bump is a harmless no-op rather than a failed run.
 
 ## Style
 
