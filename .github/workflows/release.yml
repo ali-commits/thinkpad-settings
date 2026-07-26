@@ -19,10 +19,11 @@ jobs:
 
     steps:
       # See ci.yml for why each of these is named explicitly with weak deps off.
+      # rpm-sign and gnupg2 are additionally needed to sign the release.
       - name: Install toolchain
         run: |
           dnf install -y --setopt=install_weak_deps=False \
-            git-core rpm-build rpmdevtools rpmlint \
+            git-core rpm-build rpmdevtools rpmlint rpm-sign gnupg2 \
             python3-devel pyproject-rpm-macros python3-pip python3-setuptools \
             desktop-file-utils libappstream-glib \
             python3-gobject python3-cairo gobject-introspection \
@@ -86,6 +87,38 @@ jobs:
           mkdir -p dist
           cp ~/rpmbuild/RPMS/noarch/*.rpm dist/
           cp ~/rpmbuild/SRPMS/*.rpm dist/
+
+      - name: Sign packages
+        if: steps.meta.outputs.exists == 'false'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        run: |
+          if [ -z "$GPG_PRIVATE_KEY" ]; then
+            echo "GPG_PRIVATE_KEY secret is missing — refusing to publish unsigned packages." >&2
+            exit 1
+          fi
+          GNUPGHOME="$(mktemp -d)"; chmod 700 "$GNUPGHOME"; export GNUPGHOME
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          printf '%s' "$GPG_PASSPHRASE" > "$GNUPGHOME/passphrase"
+          chmod 600 "$GNUPGHOME/passphrase"
+
+          rpmsign --define "_gpg_name $GPG_KEY_ID" \
+                  --define "_gpg_sign_cmd_extra_args --pinentry-mode loopback --batch --passphrase-file $GNUPGHOME/passphrase" \
+                  --addsign dist/*.rpm
+
+          # A silently unsigned package is worse than a failed release, so
+          # confirm the header signature is really there before shipping.
+          for rpm in dist/*.rpm; do
+            rpm -qp --qf '%{RSAHEADER:pgpsig}\n' "$rpm" 2>/dev/null | grep -q 'Key ID' \
+              || { echo "NOT SIGNED: $rpm" >&2; exit 1; }
+            echo "signed: $(basename "$rpm")"
+          done
+
+      - name: Checksums
+        if: steps.meta.outputs.exists == 'false'
+        run: |
           (cd dist && sha256sum *.rpm > SHA256SUMS)
           ls -la dist/
 

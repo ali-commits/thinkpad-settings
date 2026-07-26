@@ -195,6 +195,37 @@ Never create the `v*` tag by hand; the workflow owns it. If the tag already
 exists the workflow skips publishing, so re-merging to `main` without a version
 bump is a harmless no-op rather than a failed run.
 
+Publishing a release also triggers the **Publish dnf repository** workflow,
+which collects the RPMs from *every* release, rebuilds the repository metadata
+and deploys it to GitHub Pages. Older versions stay installable.
+
+### Signing
+
+Packages and repository metadata are signed with a dedicated key
+(`8B6BA518D0BDF62B4DAD665565BED405FED3678F`). Three repository secrets drive it:
+
+| Secret | |
+|---|---|
+| `GPG_PRIVATE_KEY` | ASCII-armoured private key |
+| `GPG_PASSPHRASE` | its passphrase |
+| `GPG_KEY_ID` | fingerprint passed to `rpmsign` |
+
+Both workflows **fail rather than publish unsigned artifacts** if the key is
+missing — an unsigned package that looks signed is worse than a failed release.
+The public half is committed at `data/RPM-GPG-KEY-thinkpad-settings` and served
+from the Pages site; if it is ever rotated, both must change together or every
+existing user's `dnf` will reject the repository.
+
+To test the repository locally without publishing:
+
+```
+sudo dnf install createrepo_c rpm-sign
+export GPG_KEY_ID=... GPG_PASSPHRASE_FILE=...
+./build-repo.sh ~/rpmbuild/RPMS/noarch /tmp/site "file:///tmp/site"
+```
+
+then point a `.repo` file at `file:///tmp/site/fedora/`.
+
 ## Style
 
 Match what is already there: real sentences in comments, explaining *why* rather
