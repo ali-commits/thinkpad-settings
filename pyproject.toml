@@ -27,6 +27,22 @@ classifiers = [
 [project.gui-scripts]
 thinkpad-settings = "thinkpad_settings.app:main"
 
+[dependency-groups]
+dev = [
+    "ruff>=0.16.0",
+    "mypy>=2.3.0",
+    "pyrefly>=1.1.1",
+    "pre-commit>=4.6.1",
+    "pygobject-stubs>=2.17.0",
+]
+
+[tool.uv]
+# pygobject-stubs declares a runtime dependency on PyGObject, which drags in
+# pycairo and tries to compile it from source (needs cairo-devel and a C
+# toolchain). The stubs are type-only, and the real PyGObject comes from the
+# distro package the app runs against, so the dependency is dropped here.
+override-dependencies = ["pygobject; sys_platform == 'never'"]
+
 [tool.setuptools]
 packages = ["thinkpad_settings"]
 

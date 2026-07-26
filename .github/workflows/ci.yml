@@ -16,7 +16,7 @@ jobs:
       - name: Install toolchain
         run: |
           dnf install -y --setopt=install_weak_deps=False \
-            git-core python3-devel python3-pip ShellCheck \
+            git-core python3-devel ShellCheck \
             python3-gobject python3-cairo gobject-introspection gtk4 libadwaita
 
       - uses: actions/checkout@v7
@@ -24,25 +24,29 @@ jobs:
       - name: Mark workspace safe for git
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      # PYGOBJECT_STUB_CONFIG must be set at install time; without it the Gtk3
-      # stubs are built and every Gtk4 call looks wrong.
+      - uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+
+      # --system-site-packages so the venv can see the distro PyGObject the
+      # tests import; --locked so a stale uv.lock fails the build instead of
+      # silently resolving something different from what was reviewed.
       - name: Install checkers
         run: |
-          python3 -m venv --system-site-packages .venv
-          PYGOBJECT_STUB_CONFIG=Gtk4,Gdk4 .venv/bin/pip install --quiet \
-            ruff mypy pyrefly pygobject-stubs
+          uv venv --system-site-packages
+          uv sync --locked
 
       - name: ruff (lint)
-        run: .venv/bin/ruff check thinkpad_settings tests
+        run: uv run ruff check thinkpad_settings tests
 
       - name: ruff (format)
-        run: .venv/bin/ruff format --check thinkpad_settings tests
+        run: uv run ruff format --check thinkpad_settings tests
 
       - name: mypy (strict)
-        run: .venv/bin/mypy thinkpad_settings tests
+        run: uv run mypy thinkpad_settings tests
 
       - name: pyrefly
-        run: .venv/bin/pyrefly check
+        run: uv run pyrefly check
 
       - name: shellcheck
         run: shellcheck ./*.sh

@@ -61,25 +61,42 @@ If you also have the `./install.sh` copy in `~/.local`, remove it first with
 The project is checked with **ruff** (lint + format), **mypy** in `strict` mode
 and **pyrefly**, all three clean with zero suppressions in the application code.
 
-```
-python3 -m venv --system-site-packages .venv
-PYGOBJECT_STUB_CONFIG=Gtk4,Gdk4 .venv/bin/pip install \
-    ruff mypy pyrefly pre-commit pygobject-stubs
-.venv/bin/pre-commit install
-```
-
-`PYGOBJECT_STUB_CONFIG=Gtk4,Gdk4` is **not optional**. `pygobject-stubs`
-generates Gtk3 stubs by default, and with those every GTK4 call in this codebase
-looks like an error. It is a build-time variable, which is also why mypy and
-pyrefly run as `system` pre-commit hooks against this venv rather than in
-pre-commit's own isolated environments — pre-commit cannot pass it through.
+Tooling is managed with [uv](https://docs.astral.sh/uv/) and pinned in
+`uv.lock`, so everyone — and CI — runs identical versions.
 
 ```
-.venv/bin/ruff check thinkpad_settings tests
-.venv/bin/ruff format thinkpad_settings tests
-.venv/bin/mypy thinkpad_settings tests
-.venv/bin/pyrefly check
+uv venv --system-site-packages
+uv sync
+uv run pre-commit install
 ```
+
+`--system-site-packages` matters: the test suite imports the distro's PyGObject,
+which is not practically pip-installable. `uv sync` preserves the flag on an
+existing venv.
+
+```
+uv run ruff check thinkpad_settings tests
+uv run ruff format thinkpad_settings tests
+uv run mypy thinkpad_settings tests
+uv run pyrefly check
+```
+
+Two uv-specific notes:
+
+`pygobject-stubs` declares a runtime dependency on PyGObject, which drags in
+`pycairo` and tries to compile it from source. `[tool.uv] override-dependencies`
+drops it — the stubs are type-only and the real PyGObject comes from the distro.
+Without that override `uv sync` fails with a meson `Dependency "cairo" not
+found` error.
+
+`PYGOBJECT_STUB_CONFIG=Gtk4,Gdk4` is set in CI as documentation of intent, but
+it is **not** required: pygobject-stubs installs "the most recent version of
+each library" when unset, which is already Gtk4. Set it if a future release
+changes that default.
+
+The type checkers run through `uv run` in pre-commit as `system` hooks so they
+use the locked versions; letting pre-commit resolve its own mypy would drift
+from CI.
 
 `pre-commit run --all-files` runs all of the above plus shellcheck, the catalog
 integrity check and the version-consistency check. CI runs the same commands.

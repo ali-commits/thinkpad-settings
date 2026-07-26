@@ -1,15 +1,16 @@
 # Run once after cloning:
 #
-#   python3 -m venv --system-site-packages .venv
-#   PYGOBJECT_STUB_CONFIG=Gtk4,Gdk4 .venv/bin/pip install \
-#       ruff mypy pyrefly pre-commit pygobject-stubs
-#   .venv/bin/pre-commit install
+#   uv venv --system-site-packages
+#   uv sync
+#   uv run pre-commit install
 #
-# The type checkers run as `system` hooks against that venv rather than in
-# pre-commit's own isolated environments. They need pygobject-stubs built with
-# PYGOBJECT_STUB_CONFIG=Gtk4, and pre-commit cannot pass a build-time
-# environment variable when it installs a dependency — without it you get the
-# Gtk3 stubs and a flood of false errors.
+# The type checkers run as `system` hooks through `uv run` rather than in
+# pre-commit's own isolated environments, so they use the exact versions pinned
+# in uv.lock. Letting pre-commit resolve its own mypy would silently drift from
+# what CI runs.
+#
+# The venv needs --system-site-packages because the test suite imports the
+# distro's PyGObject; `uv sync` preserves that flag on an existing venv.
 
 default_install_hook_types: [pre-commit, commit-msg]
 
@@ -34,18 +35,23 @@ repos:
       - id: check-added-large-files
         args: [--maxkb=2048]
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.0
-    hooks:
-      - id: ruff-check
-        args: [--fix]
-      - id: ruff-format
-
   - repo: local
     hooks:
+      - id: ruff-check
+        name: ruff (lint)
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+
+      - id: ruff-format
+        name: ruff (format)
+        entry: uv run ruff format
+        language: system
+        types: [python]
+
       - id: mypy
         name: mypy (strict)
-        entry: .venv/bin/mypy
+        entry: uv run mypy
         language: system
         types: [python]
         pass_filenames: false
@@ -53,11 +59,18 @@ repos:
 
       - id: pyrefly
         name: pyrefly
-        entry: .venv/bin/pyrefly
+        entry: uv run pyrefly
         language: system
         types: [python]
         pass_filenames: false
         args: [check]
+
+      - id: uv-lock
+        name: uv.lock is current
+        entry: uv lock --check
+        language: system
+        pass_filenames: false
+        files: '^(pyproject\.toml|uv\.lock)$'
 
       - id: shellcheck
         name: shellcheck
@@ -70,7 +83,7 @@ repos:
       # machine's state as fact. Cheap to check, so check every commit.
       - id: catalog
         name: catalog integrity
-        entry: python3 tests/check_catalog.py
+        entry: uv run python tests/check_catalog.py
         language: system
         pass_filenames: false
         files: '^(thinkpad_settings/metadata\.(py|json)|tests/(check_catalog\.py|fixture-.*\.json))$'
