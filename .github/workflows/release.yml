@@ -40,25 +40,16 @@ jobs:
         id: meta
         run: |
           version=$(cat VERSION)
-          spec_version=$(sed -n 's/^Version:[[:space:]]*//p' thinkpad-settings.spec)
-          if [ -z "$version" ] || [ -z "$spec_version" ]; then
-            echo "Could not read VERSION or the spec's Version:" >&2
+          if [ -z "$version" ]; then
+            echo "VERSION is empty" >&2
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-          # VERSION is the source of truth; pyproject and the About dialog
-          # derive from it and cannot drift. The spec has to carry a literal
-          # because rpmbuild parses it before unpacking Source0, so this is the
-          # one pair that can disagree.
-          if [ "$version" != "$spec_version" ]; then
-            echo "VERSION says '$version' but the spec says '$spec_version'" >&2
-            echo "Run ./bump-version.sh to set both." >&2
-            exit 1
-          fi
-          grep -q "release version=\"$version\"" \
-            data/com.rabeei.ThinkPadSettings.metainfo.xml \
-            || { echo "metainfo.xml has no <release> entry for $version" >&2; exit 1; }
+          # VERSION is the only place the version lives. build-rpm.sh derives
+          # the spec version, the RPM changelog and the AppStream release entry
+          # at build time, so there is nothing to keep in sync and nothing to
+          # check here.
 
           # Re-pushing main without a version bump should be a no-op, not a
           # failed run.

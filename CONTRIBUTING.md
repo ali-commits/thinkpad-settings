@@ -192,35 +192,37 @@ staged change.
 
 ## Versioning
 
-**`VERSION` at the repository root is the single source of truth.**
+**`VERSION` at the repository root is the only place the version is written.**
 
-| File | Relationship |
+Everything else is derived by `build-rpm.sh` at build time, into staged copies —
+never into the working tree, so nothing can drift and there is nothing to keep
+in sync:
+
+| | |
 |---|---|
-| `VERSION` | the version. Edit this (via the script below) |
-| `pyproject.toml` | **derived** — `dynamic = ["version"]`, read from `VERSION` |
-| `thinkpad_settings/__init__.py` | **derived** — package metadata, falling back to `VERSION` |
-| `thinkpad-settings.spec` | written by the script — must carry a literal |
-| `%changelog`, `<releases>` | changelogs: entries are appended, not replaced |
+| `VERSION` | edit this. That is the whole procedure. |
+| `pyproject.toml` | `dynamic = ["version"]`, read from `VERSION` |
+| `thinkpad_settings.__version__` | reads `VERSION`, falling back to installed metadata |
+| spec `Version:` | rewritten at build time |
+| spec `%changelog` | an entry is synthesised if none exists for this version |
+| metainfo `<release>` | an entry is added if none exists for this version |
 
-Only the spec can drift, and it has to: **rpmbuild parses the spec before it
-unpacks `Source0`**, so `Version: %(cat VERSION)` resolves to nothing — the file
-only exists inside the tarball. That one pair is what CI and the pre-commit hook
-compare.
+The `Version:` in the committed spec is a deliberate `0.0.0` placeholder.
+rpmbuild parses the spec *before* it unpacks `Source0`, so the spec cannot read
+`VERSION` itself — `Version: %(cat VERSION)` resolves to nothing. `build-rpm.sh`
+rewrites the copy it hands to rpmbuild.
 
-`pyproject.toml` and the About dialog cannot disagree with `VERSION`, because
-neither stores it.
-
-Don't edit any of them by hand:
+To cut a release:
 
 ```
-./bump-version.sh 0.2.0
-./bump-version.sh 0.2.0 --message "Add support for X"
+echo 0.2.0 > VERSION
+git commit -am "Release 0.2.0"
 ```
 
-That writes `VERSION` and the spec, prepends a correctly formatted RPM
-changelog entry and an AppStream release entry, re-validates the metainfo, and
-applies the same consistency check CI does — so a mismatch fails on your machine
-in a second rather than in CI two minutes later.
+If you want a real changelog entry rather than the synthesised "Release X.Y.Z",
+add one to `%changelog` in the spec yourself; `build-rpm.sh` leaves it alone
+when the version already appears there. Same for the metainfo `<release>` block
+if you want release notes in GNOME Software.
 
 ### Which number to bump
 
@@ -234,21 +236,14 @@ While the project is `0.x`, treat the **minor** as the breaking-change signal:
 
 ### `Version` vs `Release`
 
-`Version` is the software. `Release` (the `-1` in `0.1.0-1.fc44`) is the
-*packaging* of that software. If nothing but the spec changed — a fixed
-dependency, a corrected file list — bump `Release` and leave `Version` alone:
-
-```
-./bump-version.sh 0.1.0 --release 2
-```
-
-Note the release workflow keys on `v<Version>` only, so a `Release`-only bump
-will **not** publish a new GitHub Release — the tag already exists. Rebuild and
-attach it manually, or bump the patch version instead if it needs publishing.
+`Version` is the software, `Release` (the `-1` in `0.1.0-1.fc44`) is the
+packaging of it. For a spec-only fix, bump `Release:` in the spec directly. Note
+the release workflow keys on `v<VERSION>`, so a `Release`-only bump publishes no
+new GitHub Release — the tag already exists.
 
 ## Releasing
 
-1. `./bump-version.sh X.Y.Z` on `dev`, commit, push.
+1. `echo X.Y.Z > VERSION` on `dev`, commit, push.
 2. PR `dev` → `beta`, let it soak.
 3. PR `beta` → `main`. `main` is protected: the PR cannot merge until
    **Build and test on Fedora** passes, and direct pushes are rejected.

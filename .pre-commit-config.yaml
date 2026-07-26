@@ -87,16 +87,3 @@ repos:
         language: system
         pass_filenames: false
         files: '^(thinkpad_settings/metadata\.(py|json)|tests/(check_catalog\.py|fixture-.*\.json))$'
-
-      # VERSION is the source of truth; pyproject and the About dialog derive
-      # from it. The spec must carry a literal because rpmbuild parses it
-      # before unpacking Source0, so it is the only thing that can drift.
-      - id: version-consistency
-        name: VERSION matches the spec
-        entry: bash -c 'v=$(cat VERSION);
-          s=$(sed -n "s/^Version:[[:space:]]*//p" thinkpad-settings.spec);
-          [ "$v" = "$s" ] ||
-          { echo "VERSION=$v but spec=$s — run ./bump-version.sh"; exit 1; }'
-        language: system
-        pass_filenames: false
-        files: '^(VERSION|thinkpad-settings\.spec)$'
