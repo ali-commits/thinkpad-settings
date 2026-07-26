@@ -11,6 +11,7 @@ firmware and no window is presented on the user's desktop.
 
 import json
 import sys
+import tempfile
 import traceback
 from collections.abc import Callable
 from pathlib import Path
@@ -22,13 +23,16 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, GLib, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from thinkpad_settings import bootorder, metadata
 from thinkpad_settings.fwupd import BiosSetting, FwupdError, _parse
 
 DUMP = Path(__file__).resolve().parent / "fixture-t14gen3.json"
-SETTINGS = _parse(json.loads(DUMP.read_text(encoding="utf-8"))["BiosSettings"])
+RAW: list[dict[str, object]] = json.loads(DUMP.read_text(encoding="utf-8"))[
+    "BiosSettings"
+]
+SETTINGS = _parse(RAW)
 
 failures: list[str] = []
 applied_payload: dict[str, str] = {}
@@ -45,6 +49,7 @@ def check(label: str, cond: object, detail: str = "") -> None:
 class StubClient:
     def __init__(self) -> None:
         self.set_calls = 0
+        self.last_raw: list[dict[str, object]] = list(RAW)
 
     def get_settings(
         self,
@@ -116,6 +121,28 @@ def run(app: Adw.Application) -> None:
         hits = [s for s in win._settings if win._matches(s)]
         check(f"search {term!r}", bool(hits) == expect_some, f"{len(hits)} hits")
     win._search = ""
+
+    # Export must be byte-faithful to what fwupd reported, so the file drops
+    # straight in as a fixture for another model.
+    check(
+        "export filename derives from the model",
+        win._machine_name().startswith("thinkpad"),
+        win._machine_name(),
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "export.json"
+        win._write_export(Gio.File.new_for_path(str(out)))
+        check("export wrote a file", out.exists())
+        exported = json.loads(out.read_text(encoding="utf-8"))
+        check(
+            "export matches fwupd's reply exactly",
+            exported["BiosSettings"] == RAW,
+            f"{len(exported.get('BiosSettings', []))} entries",
+        )
+        check(
+            "exported file re-parses as a fixture",
+            len(_parse(exported["BiosSettings"])) == len(SETTINGS),
+        )
 
     # Fuzzy search: the answer must come first, and the weak subsequence tail
     # must be cut off. "wol" technically subsequence-matches most settings.

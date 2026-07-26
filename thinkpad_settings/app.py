@@ -33,6 +33,7 @@ class ThinkPadSettingsApp(Adw.Application):
 
         self._add_action("about", self._on_about)
         self._add_action("refresh", self._on_refresh, ["<Control>r"])
+        self._add_action("export", self._on_export, ["<Control>e"])
         self._add_action("search", self._on_search, ["<Control>f"])
         self._add_action("quit", self._on_quit, ["<Control>q", "<Control>w"])
 
@@ -60,6 +61,10 @@ class ThinkPadSettingsApp(Adw.Application):
     def _on_refresh(self, *_args: object) -> None:
         if self._window is not None:
             self._window.reload()
+
+    def _on_export(self, *_args: object) -> None:
+        if self._window is not None:
+            self._window.export_settings()
 
     def _on_search(self, *_args: object) -> None:
         if self._window is not None:

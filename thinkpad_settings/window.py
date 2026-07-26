@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import re
+from pathlib import Path
+
 from gi.repository import Adw, Gio, GLib, GObject, Gtk
 
 from . import bootorder, metadata, search
@@ -133,6 +137,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         menu = Gio.Menu()
         menu.append("Refresh", "app.refresh")
+        menu.append("Export settings…", "app.export")
         menu.append("About", "app.about")
 
         self._search_button = Gtk.ToggleButton(
@@ -912,6 +917,82 @@ class MainWindow(Adw.ApplicationWindow):
                 self._toast(f"Could not apply: {error.message}")
 
         self._client.set_settings(changes, done, failed)
+
+    # -- export ----------------------------------------------------------
+
+    def _machine_name(self) -> str:
+        """A filename-safe model name, e.g. thinkpad-t14-gen-3.
+
+        DMI is world-readable for the model; the serial number is not, and is
+        deliberately not read — an exported file is meant to be shareable.
+        """
+        try:
+            model = Path("/sys/devices/virtual/dmi/id/product_version").read_text(
+                encoding="utf-8"
+            )
+        except OSError:
+            model = ""
+        slug = re.sub(r"[^a-z0-9]+", "-", model.strip().lower()).strip("-")
+        return slug or "thinkpad"
+
+    def export_settings(self) -> None:
+        """Save the firmware settings exactly as fwupd reported them.
+
+        Two uses, both real: a snapshot to compare against before changing
+        anything, and the file a contributor attaches so their model can be
+        catalogued. Writing fwupd's reply verbatim means it drops straight in
+        as a test fixture.
+        """
+        if not self._client.last_raw:
+            self._toast("Nothing to export yet — settings have not loaded")
+            return
+
+        dialog = Gtk.FileDialog()
+        dialog.set_title("Export firmware settings")
+        dialog.set_initial_name(f"{self._machine_name()}-settings.json")
+
+        json_filter = Gtk.FileFilter()
+        json_filter.set_name("JSON")
+        json_filter.add_pattern("*.json")
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(json_filter)
+        dialog.set_filters(filters)
+
+        def chosen(source: Gtk.FileDialog, result: Gio.AsyncResult) -> None:
+            try:
+                target = source.save_finish(result)
+            except GLib.Error as error:
+                # A dismissed file chooser is not a failure worth reporting.
+                if not error.matches(
+                    Gtk.dialog_error_quark(), Gtk.DialogError.DISMISSED
+                ):
+                    self._toast(f"Could not export: {error.message}")
+                return
+            self._write_export(target)
+
+        dialog.save(self, None, chosen)
+
+    def _write_export(self, target: Gio.File) -> None:
+        # Same shape fwupdmgr --json produces, so the file is interchangeable
+        # with one captured from the command line.
+        payload = json.dumps(
+            {"BiosSettings": self._client.last_raw}, indent=1, ensure_ascii=False
+        )
+        try:
+            target.replace_contents(
+                payload.encode("utf-8") + b"\n",
+                None,
+                False,
+                Gio.FileCreateFlags.REPLACE_DESTINATION,
+                None,
+            )
+        except GLib.Error as error:
+            self._toast(f"Could not write the file: {error.message}")
+            return
+
+        name = target.get_basename() or "file"
+        count = len(self._client.last_raw)
+        self._toast(f"Exported {count} settings to {name}")
 
     # -- misc ------------------------------------------------------------
 
