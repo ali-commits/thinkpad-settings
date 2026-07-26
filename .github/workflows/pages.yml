@@ -1,6 +1,15 @@
 name: Publish dnf repository
 
 on:
+  # A release created with the automatic GITHUB_TOKEN does NOT emit a release
+  # event — GitHub suppresses it to prevent workflows triggering themselves.
+  # So `release: published` never fires for our own releases and the repository
+  # would silently keep serving the previous version. workflow_run is not
+  # suppressed, so chain off the Release workflow finishing instead.
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+  # Still useful if a release is ever published by hand or with a PAT.
   release:
     types: [published]
   workflow_dispatch:
@@ -24,6 +33,11 @@ jobs:
     name: Assemble repository
     runs-on: ubuntu-latest
     container: fedora:44
+    # workflow_run fires whatever the outcome, so skip a failed release rather
+    # than republishing the repository from a half-finished one.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Install toolchain
