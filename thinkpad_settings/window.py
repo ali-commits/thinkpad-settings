@@ -35,6 +35,18 @@ _STYLE = """
 """
 
 
+def slugify_model(model: str) -> str:
+    """Turn a DMI model string into a filename-safe slug.
+
+    Separate from the widget so it can be tested without depending on whatever
+    machine happens to be running the suite — CI is not a ThinkPad. The
+    fallback is deliberately generic: the app runs on any firmware-attributes
+    machine, so guessing "thinkpad" would be wrong on a Dell.
+    """
+    slug = re.sub(r"[^a-z0-9]+", "-", model.strip().lower()).strip("-")
+    return slug or "firmware"
+
+
 class CategoryRow(Adw.ActionRow):
     """Sidebar row that remembers which category it selects.
 
@@ -932,8 +944,7 @@ class MainWindow(Adw.ApplicationWindow):
             )
         except OSError:
             model = ""
-        slug = re.sub(r"[^a-z0-9]+", "-", model.strip().lower()).strip("-")
-        return slug or "thinkpad"
+        return slugify_model(model)
 
     def export_settings(self) -> None:
         """Save the firmware settings exactly as fwupd reported them.

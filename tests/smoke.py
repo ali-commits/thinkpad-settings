@@ -124,10 +124,22 @@ def run(app: Adw.Application) -> None:
 
     # Export must be byte-faithful to what fwupd reported, so the file drops
     # straight in as a fixture for another model.
+    # Test the slug logic, not this machine's DMI: CI is not a ThinkPad, and a
+    # test that only passes on the author's laptop is worse than no test.
+    for raw_model, expected_slug in [
+        ("ThinkPad T14 Gen 3", "thinkpad-t14-gen-3"),
+        ("  ThinkPad  T495  ", "thinkpad-t495"),
+        ("20N4CTO1WW", "20n4cto1ww"),
+        ("", "firmware"),
+        ("///", "firmware"),
+    ]:
+        got_slug = ts_window.slugify_model(raw_model)
+        check(f"slugify {raw_model!r}", got_slug == expected_slug, got_slug)
+    machine = win._machine_name()
     check(
-        "export filename derives from the model",
-        win._machine_name().startswith("thinkpad"),
-        win._machine_name(),
+        "machine name is filename-safe and non-empty",
+        bool(machine) and machine == ts_window.slugify_model(machine),
+        machine,
     )
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "export.json"
