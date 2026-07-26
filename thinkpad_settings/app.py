@@ -13,10 +13,10 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, Gio, Gtk  # noqa: E402
 
+from . import __version__  # noqa: E402
 from .window import MainWindow  # noqa: E402
 
 APP_ID = "com.rabeei.ThinkPadSettings"
-VERSION = "0.1.0"
 
 # Kept in one place so the .desktop file, the About dialog and the window title
 # cannot drift apart.
@@ -75,7 +75,7 @@ class ThinkPadSettingsApp(Adw.Application):
         about = Adw.AboutDialog(
             application_name=APP_NAME,
             application_icon=APP_ID,
-            version=VERSION,
+            version=__version__,
             developer_name="Built for this machine",
             license_type=Gtk.License.MIT_X11,
             comments=(

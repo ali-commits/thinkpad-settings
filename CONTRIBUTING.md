@@ -192,27 +192,35 @@ staged change.
 
 ## Versioning
 
-The version lives in **four** files, and the release workflow refuses to publish
-if they disagree:
+**`VERSION` at the repository root is the single source of truth.**
 
-| File | Holds |
+| File | Relationship |
 |---|---|
-| `thinkpad-settings.spec` | `Version:`, `Release:`, `%changelog` |
-| `pyproject.toml` | `version = ` |
-| `thinkpad_settings/app.py` | `VERSION = ` (shown in About) |
-| `data/…metainfo.xml` | `<release version=…>` (shown in GNOME Software) |
+| `VERSION` | the version. Edit this (via the script below) |
+| `pyproject.toml` | **derived** — `dynamic = ["version"]`, read from `VERSION` |
+| `thinkpad_settings/__init__.py` | **derived** — package metadata, falling back to `VERSION` |
+| `thinkpad-settings.spec` | written by the script — must carry a literal |
+| `%changelog`, `<releases>` | changelogs: entries are appended, not replaced |
 
-Don't edit them by hand:
+Only the spec can drift, and it has to: **rpmbuild parses the spec before it
+unpacks `Source0`**, so `Version: %(cat VERSION)` resolves to nothing — the file
+only exists inside the tarball. That one pair is what CI and the pre-commit hook
+compare.
+
+`pyproject.toml` and the About dialog cannot disagree with `VERSION`, because
+neither stores it.
+
+Don't edit any of them by hand:
 
 ```
 ./bump-version.sh 0.2.0
 ./bump-version.sh 0.2.0 --message "Add support for X"
 ```
 
-That updates all four, prepends a correctly formatted RPM changelog entry,
-prepends an AppStream release entry, re-validates the metainfo and applies the
-same consistency gate CI does — so a mismatch fails on your machine in a second
-rather than in CI two minutes later.
+That writes `VERSION` and the spec, prepends a correctly formatted RPM
+changelog entry and an AppStream release entry, re-validates the metainfo, and
+applies the same consistency check CI does — so a mismatch fails on your machine
+in a second rather than in CI two minutes later.
 
 ### Which number to bump
 

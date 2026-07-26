@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thinkpad-settings"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Edit ThinkPad firmware (BIOS) settings from the desktop"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -45,6 +45,13 @@ override-dependencies = ["pygobject; sys_platform == 'never'"]
 
 [tool.setuptools]
 packages = ["thinkpad_settings"]
+
+# VERSION is the single source of truth; pyproject and the About dialog both
+# derive from it so neither can drift. The RPM spec cannot: rpmbuild parses the
+# spec before it unpacks Source0, so its Version: is written by bump-version.sh
+# and checked by CI.
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
 
 [tool.setuptools.package-data]
 thinkpad_settings = ["metadata.json"]

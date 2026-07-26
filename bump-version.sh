@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Set the version in every place that holds one, in a single step.
-#
-# The version lives in four files and the release workflow refuses to publish
-# if they disagree, so editing them by hand is a reliable way to waste a CI run.
+# Set the release version.
 #
 #   ./bump-version.sh 0.2.0
-#   ./bump-version.sh 0.2.0 --release 2   # packaging-only rebuild, same version
+#   ./bump-version.sh 0.2.0 --message "Add support for X"
+#   ./bump-version.sh 0.1.0 --release 2   # packaging-only rebuild
+#
+# VERSION is the single source of truth. pyproject.toml and the About dialog
+# derive from it and are never edited here — they cannot drift.
+#
+# Two things still have to be written:
+#   * the spec's Version:, because rpmbuild parses the spec before it unpacks
+#     Source0 and so cannot read VERSION out of the tarball
+#   * the two changelogs (%changelog and the AppStream <releases> list), which
+#     accumulate entries rather than holding a single value
 set -euo pipefail
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -46,18 +53,21 @@ if ! [[ "$RELEASE" =~ ^[0-9]+$ ]]; then
 fi
 [ -n "$MESSAGE" ] || MESSAGE="Release $VERSION"
 
-CURRENT="$(sed -n 's/^Version:[[:space:]]*//p' thinkpad-settings.spec)"
+CURRENT="$(cat VERSION)"
 echo "  $CURRENT  ->  $VERSION-$RELEASE"
 
-# RPM changelog dates must be C-locale English, whatever the user's locale is.
+# 1. the source of truth
+echo "$VERSION" > VERSION
+
+# 2. the spec, plus a new changelog entry at the top of the list
 STAMP="$(LC_ALL=C date '+%a %b %d %Y')"
 AUTHOR="$(git config user.name || echo Ali) <$(git config user.email || echo ali@rabeei.com)>"
-
-# 1. spec: Version, Release, and a new changelog entry at the top of the list
 sed -i "s/^Version:.*/Version:        $VERSION/" thinkpad-settings.spec
 sed -i "s/^Release:.*/Release:        $RELEASE%{?dist}/" thinkpad-settings.spec
 python3 - "$VERSION" "$RELEASE" "$STAMP" "$AUTHOR" "$MESSAGE" <<'PY'
-import sys, pathlib
+import pathlib
+import sys
+
 version, release, stamp, author, message = sys.argv[1:6]
 path = pathlib.Path("thinkpad-settings.spec")
 text = path.read_text()
@@ -69,43 +79,44 @@ if not sep:
 path.write_text(head + sep + entry + ("\n" if tail.strip() else "") + tail.lstrip("\n"))
 PY
 
-# 2. pyproject.toml
-sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
+# 3. the AppStream release list, which GNOME Software shows
+python3 - "$VERSION" "$MESSAGE" <<'PY'
+import datetime
+import pathlib
+import re
+import sys
 
-# 3. the About dialog
-sed -i "s/^VERSION = \".*\"/VERSION = \"$VERSION\"/" thinkpad_settings/app.py
-
-# 4. AppStream release list — GNOME Software shows this
-python3 - "$VERSION" <<'PY'
-import datetime, pathlib, re, sys
-version = sys.argv[1]
+version, message = sys.argv[1:3]
 path = pathlib.Path("data/com.rabeei.ThinkPadSettings.metainfo.xml")
 text = path.read_text()
 today = datetime.date.today().isoformat()
 if re.search(rf'<release version="{re.escape(version)}"', text):
-    text = re.sub(rf'(<release version="{re.escape(version)}" date=")[^"]*(")',
-                  rf'\g<1>{today}\g<2>', text)
+    text = re.sub(
+        rf'(<release version="{re.escape(version)}" date=")[^"]*(")',
+        rf"\g<1>{today}\g<2>",
+        text,
+    )
 else:
-    entry = (f'    <release version="{version}" date="{today}">\n'
-             f'      <description>\n        <p>Release {version}.</p>\n'
-             f'      </description>\n    </release>\n')
+    entry = (
+        f'    <release version="{version}" date="{today}">\n'
+        f"      <description>\n        <p>{message}</p>\n"
+        f"      </description>\n    </release>\n"
+    )
     text = text.replace("  <releases>\n", "  <releases>\n" + entry, 1)
 path.write_text(text)
 PY
 
-# Same gate the release workflow applies, run now rather than in CI.
-fail=0
-grep -q "^Version:        $VERSION\$" thinkpad-settings.spec || { echo "  spec mismatch" >&2; fail=1; }
-grep -q "^version = \"$VERSION\"\$" pyproject.toml || { echo "  pyproject.toml mismatch" >&2; fail=1; }
-grep -q "^VERSION = \"$VERSION\"\$" thinkpad_settings/app.py || { echo "  app.py mismatch" >&2; fail=1; }
-grep -q "release version=\"$VERSION\"" data/com.rabeei.ThinkPadSettings.metainfo.xml \
-    || { echo "  metainfo.xml mismatch" >&2; fail=1; }
-[ "$fail" -eq 0 ] || { echo "Version files disagree — not committing." >&2; exit 1; }
+# The only pair that can disagree, so the only one worth checking.
+spec_version="$(sed -n 's/^Version:[[:space:]]*//p' thinkpad-settings.spec)"
+if [ "$spec_version" != "$VERSION" ]; then
+    echo "  spec says '$spec_version', VERSION says '$VERSION'" >&2
+    exit 1
+fi
 
-command -v appstream-util >/dev/null 2>&1 && \
+command -v appstream-util >/dev/null 2>&1 &&
     appstream-util validate-relax --nonet data/com.rabeei.ThinkPadSettings.metainfo.xml >/dev/null
 
-echo "  all four files agree"
+echo "  VERSION and the spec agree; pyproject and the About dialog derive"
 echo
 git --no-pager diff --stat
 cat <<EOF

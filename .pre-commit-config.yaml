@@ -88,15 +88,15 @@ repos:
         pass_filenames: false
         files: '^(thinkpad_settings/metadata\.(py|json)|tests/(check_catalog\.py|fixture-.*\.json))$'
 
-      # Four files hold the version and the release workflow refuses to publish
-      # when they disagree. Catching that here beats catching it mid-release.
+      # VERSION is the source of truth; pyproject and the About dialog derive
+      # from it. The spec must carry a literal because rpmbuild parses it
+      # before unpacking Source0, so it is the only thing that can drift.
       - id: version-consistency
-        name: version consistency
-        entry: bash -c 'v=$(sed -n "s/^Version:[[:space:]]*//p" thinkpad-settings.spec);
-          grep -q "^version = \"$v\"" pyproject.toml &&
-          grep -q "^VERSION = \"$v\"" thinkpad_settings/app.py &&
-          grep -q "release version=\"$v\"" data/com.rabeei.ThinkPadSettings.metainfo.xml ||
-          { echo "Version files disagree with the spec ($v) — use ./bump-version.sh"; exit 1; }'
+        name: VERSION matches the spec
+        entry: bash -c 'v=$(cat VERSION);
+          s=$(sed -n "s/^Version:[[:space:]]*//p" thinkpad-settings.spec);
+          [ "$v" = "$s" ] ||
+          { echo "VERSION=$v but spec=$s — run ./bump-version.sh"; exit 1; }'
         language: system
         pass_filenames: false
-        files: '^(thinkpad-settings\.spec|pyproject\.toml|thinkpad_settings/app\.py|data/.*\.metainfo\.xml)$'
+        files: '^(VERSION|thinkpad-settings\.spec)$'
