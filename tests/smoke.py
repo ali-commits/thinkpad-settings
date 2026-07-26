@@ -219,6 +219,34 @@ def run(app: Adw.Application) -> None:
         "row census stages nothing", win._staged == {}, f"leaked: {sorted(win._staged)}"
     )
 
+    # Every contributed machine must render completely: no attribute may fall
+    # through to "Other", which is what a missing catalog entry looks like to
+    # the person running it.
+    for fixture in sorted(DUMP.parent.glob("fixture-*.json")):
+        raw_fx = json.loads(fixture.read_text(encoding="utf-8"))["BiosSettings"]
+        parsed = _parse(raw_fx)
+        uncatalogued = [
+            x.name
+            for x in parsed
+            if metadata.get(x.name).category == metadata.UNCATEGORISED
+        ]
+        check(
+            f"{fixture.name}: every attribute is catalogued",
+            not uncatalogued,
+            f"{len(uncatalogued)} in Other: {uncatalogued[:5]}",
+        )
+        unlabelled = [
+            f"{x.name}={v}"
+            for x in parsed
+            for v in x.possible_values
+            if v not in metadata.get(x.name).value_labels
+        ]
+        check(
+            f"{fixture.name}: every permitted value has a label",
+            not unlabelled,
+            f"{len(unlabelled)} missing: {unlabelled[:5]}",
+        )
+
     # Error classification, including the two traps the research surfaced.
     from gi.repository import Gio as _Gio
 

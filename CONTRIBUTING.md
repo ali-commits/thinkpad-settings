@@ -149,8 +149,9 @@ attribute:
 - `category` must be one of the ten in `metadata.CATEGORY_ORDER`.
 - `risk` is `safe`, `caution` or `danger`. Use `danger` only for things that can
   lock the user out, destroy data access, or cannot be undone.
-- `value_labels` must cover **every** value in the firmware's
-  `BiosSettingPossibleValues`, in the same order.
+- `value_labels` must cover **every** value any known machine permits for that
+  attribute. Order does not matter — rows render in the order the firmware
+  reports — and extra labels are fine as long as some fixture permits them.
 - Descriptions must be **state-neutral**. Do not write "as it is now" or
   "currently disabled" — the reader's machine differs from yours, and the
   sentence can end up contradicting the value shown in the same row.
@@ -158,8 +159,26 @@ attribute:
   permitted values make certain, and pick the more conservative risk. Never
   invent behaviour. This text is why someone will click Apply.
 
-Adding support for a model you own? Attach
-`sudo fwupdmgr get-bios-settings --json` to the issue or PR.
+### Adding a model
+
+Dump the machine and attach it:
+
+```
+sudo fwupdmgr get-bios-settings --json > t495-settings.json
+```
+
+Drop it in as `tests/fixture-<model>.json`. The validator and the test suite
+pick up `tests/fixture-*.json` automatically and will then require that every
+attribute it contains is catalogued and every permitted value has a label.
+
+The catalog is a **union across all known machines** — a T495 has attributes a
+T14 Gen 3 does not and vice versa. An entry only has to be justified by *some*
+fixture. Value labels are matched as a set, not a list: order comes from the
+firmware at render time, and a label for a value your machine lacks is exactly
+how another model gets supported.
+
+Nothing else needs changing: the app renders whatever the machine reports, and
+`metadata.get()` falls back to a derived label for anything uncatalogued.
 
 ## Known traps
 
