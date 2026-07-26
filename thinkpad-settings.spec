@@ -1,7 +1,10 @@
 %global appid com.rabeei.ThinkPadSettings
 
 Name:           thinkpad-settings
-Version:        0.1.0
+# Overwritten by build-rpm.sh from the VERSION file. rpmbuild parses this spec
+# before it unpacks Source0, so it cannot read VERSION itself — the value here
+# is a placeholder and is not the source of truth.
+Version:        0.0.0
 Release:        1%{?dist}
 Summary:        Edit ThinkPad firmware settings from the desktop
 

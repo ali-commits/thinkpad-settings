@@ -1,0 +1,143 @@
+name: Publish dnf repository
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Only the deploy job needs elevated scopes; the build job reads releases.
+# actions:read is required by deploy-pages v4+, and because naming a
+# permissions block sets every unlisted scope to none, it has to be explicit.
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+
+# A release and a manual run must not race each other onto the same site.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Assemble repository
+    runs-on: ubuntu-latest
+    container: fedora:44
+
+    steps:
+      - name: Install toolchain
+        run: |
+          dnf install -y --setopt=install_weak_deps=False \
+            git-core createrepo_c rpm-sign gnupg2 gh
+
+      - uses: actions/checkout@v7
+
+      - name: Mark workspace safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # Every published release, so users can still install or downgrade to an
+      # older version rather than only ever seeing the newest.
+      - name: Download released packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p rpms
+          tags=$(gh release list --repo "$GITHUB_REPOSITORY" \
+                   --exclude-drafts --json tagName --jq '.[].tagName')
+          if [ -z "$tags" ]; then
+            echo "No published releases yet — nothing to serve." >&2
+            exit 1
+          fi
+          for tag in $tags; do
+            echo "::group::$tag"
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" \
+              --pattern '*.noarch.rpm' --dir rpms --clobber || true
+            echo "::endgroup::"
+          done
+          ls -la rpms/
+
+      - name: Import signing key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -z "$GPG_PRIVATE_KEY" ]; then
+            echo "GPG_PRIVATE_KEY secret is missing — refusing to publish an unsigned repository." >&2
+            exit 1
+          fi
+          GNUPGHOME="$(mktemp -d)"
+          chmod 700 "$GNUPGHOME"
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --homedir "$GNUPGHOME" --batch --import
+          printf '%s' "$GPG_PASSPHRASE" > "$GNUPGHOME/passphrase"
+          chmod 600 "$GNUPGHOME/passphrase"
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+          echo "GPG_PASSPHRASE_FILE=$GNUPGHOME/passphrase" >> "$GITHUB_ENV"
+
+      # Release assets are signed at release time, but re-signing is idempotent
+      # and covers anything published before signing was introduced.
+      - name: Ensure every package is signed
+        env:
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        run: |
+          for rpm in rpms/*.noarch.rpm; do
+            if rpm -qp --qf '%{RSAHEADER:pgpsig}' "$rpm" 2>/dev/null | grep -q 'Key ID'; then
+              echo "already signed: $(basename "$rpm")"
+            else
+              echo "signing: $(basename "$rpm")"
+              rpmsign --define "_gpg_name $GPG_KEY_ID" \
+                      --define "_gpg_sign_cmd_extra_args --pinentry-mode loopback --batch --passphrase-file $GPG_PASSPHRASE_FILE" \
+                      --addsign "$rpm"
+            fi
+          done
+
+      # The site URL is not always https://<owner>.github.io/<repo>: a custom
+      # domain on the account's user site changes it, and a wrong URL here
+      # produces a .repo file that 404s on every user's machine. Ask the API
+      # what the URL actually is.
+      - name: Resolve the published site URL
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          url=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.html_url' 2>/dev/null || true)
+          if [ -z "$url" ] || [ "$url" = "null" ]; then
+            url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
+            echo "Pages API gave no URL; falling back to $url"
+          fi
+          url="${url%/}"
+          echo "PAGES_URL=$url" >> "$GITHUB_ENV"
+          echo "Publishing for: $url"
+
+      - name: Build repository and landing page
+        env:
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+        run: ./build-repo.sh rpms _site "$PAGES_URL"
+
+      # Proves the published metadata actually verifies, before anyone's dnf
+      # tries it. A broken signature here would otherwise surface as a hard
+      # repo failure on users' machines.
+      - name: Verify the repository signature
+        run: |
+          gpg --homedir "$GNUPGHOME" --verify \
+            _site/fedora/repodata/repomd.xml.asc _site/fedora/repodata/repomd.xml
+          test -f _site/thinkpad-settings.repo
+          test -f _site/RPM-GPG-KEY-thinkpad-settings
+          grep -q 'repo_gpgcheck=1' _site/thinkpad-settings.repo
+
+      # v4 stopped including dotfiles by default, which would silently drop
+      # .nojekyll from the published site.
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+          include-hidden-files: true
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

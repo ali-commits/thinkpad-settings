@@ -56,6 +56,62 @@ sudo dnf install ~/rpmbuild/RPMS/noarch/thinkpad-settings-*.noarch.rpm
 If you also have the `./install.sh` copy in `~/.local`, remove it first with
 `./uninstall.sh` — it shares a desktop ID with the package and shadows it.
 
+## Linting, formatting and types
+
+The project is checked with **ruff** (lint + format), **mypy** in `strict` mode
+and **pyrefly**, all three clean with zero suppressions in the application code.
+
+Tooling is managed with [uv](https://docs.astral.sh/uv/) and pinned in
+`uv.lock`, so everyone — and CI — runs identical versions.
+
+```
+uv venv --system-site-packages
+uv sync
+uv run pre-commit install
+```
+
+`--system-site-packages` matters: the test suite imports the distro's PyGObject,
+which is not practically pip-installable. `uv sync` preserves the flag on an
+existing venv.
+
+```
+uv run ruff check thinkpad_settings tests
+uv run ruff format thinkpad_settings tests
+uv run mypy thinkpad_settings tests
+uv run pyrefly check
+```
+
+Two uv-specific notes:
+
+`pygobject-stubs` declares a runtime dependency on PyGObject, which drags in
+`pycairo` and tries to compile it from source. `[tool.uv] override-dependencies`
+drops it — the stubs are type-only and the real PyGObject comes from the distro.
+Without that override `uv sync` fails with a meson `Dependency "cairo" not
+found` error.
+
+`PYGOBJECT_STUB_CONFIG=Gtk4,Gdk4` is set in CI as documentation of intent, but
+it is **not** required: pygobject-stubs installs "the most recent version of
+each library" when unset, which is already Gtk4. Set it if a future release
+changes that default.
+
+The type checkers run through `uv run` in pre-commit as `system` hooks so they
+use the locked versions; letting pre-commit resolve its own mypy would drift
+from CI.
+
+`pre-commit run --all-files` runs all of the above plus shellcheck, the catalog
+integrity check and the version-consistency check. CI runs the same commands.
+
+Strict typing on a PyGObject app is only meaningful because of the stubs, and it
+earns its keep: it was mypy that caught the code attaching Python attributes
+(`row.category`, `row.staged_badge`) directly to GObject widgets. That works at
+runtime but is invisible to the checker and breaks silently when a widget is
+recreated — the fix was a `CategoryRow` subclass and a badge dictionary keyed by
+setting name.
+
+Where a `# type: ignore` is unavoidable it carries the specific error code and a
+reason. There are three, all in the test suite, all because substituting a fake
+D-Bus client is the point of the test.
+
 ## Tests
 
 ```
@@ -134,17 +190,100 @@ escaped.
 client-side first so a single unwritable value can't silently kill every other
 staged change.
 
+## Versioning
+
+**`VERSION` at the repository root is the only place the version is written.**
+
+Everything else is derived by `build-rpm.sh` at build time, into staged copies —
+never into the working tree, so nothing can drift and there is nothing to keep
+in sync:
+
+| | |
+|---|---|
+| `VERSION` | edit this. That is the whole procedure. |
+| `pyproject.toml` | `dynamic = ["version"]`, read from `VERSION` |
+| `thinkpad_settings.__version__` | reads `VERSION`, falling back to installed metadata |
+| spec `Version:` | rewritten at build time |
+| spec `%changelog` | an entry is synthesised if none exists for this version |
+| metainfo `<release>` | an entry is added if none exists for this version |
+
+The `Version:` in the committed spec is a deliberate `0.0.0` placeholder.
+rpmbuild parses the spec *before* it unpacks `Source0`, so the spec cannot read
+`VERSION` itself — `Version: %(cat VERSION)` resolves to nothing. `build-rpm.sh`
+rewrites the copy it hands to rpmbuild.
+
+To cut a release:
+
+```
+echo 0.2.0 > VERSION
+git commit -am "Release 0.2.0"
+```
+
+If you want a real changelog entry rather than the synthesised "Release X.Y.Z",
+add one to `%changelog` in the spec yourself; `build-rpm.sh` leaves it alone
+when the version already appears there. Same for the metainfo `<release>` block
+if you want release notes in GNOME Software.
+
+### Which number to bump
+
+While the project is `0.x`, treat the **minor** as the breaking-change signal:
+
+- `0.1.0 → 0.1.1` — bug fixes, catalog wording, packaging that changes behaviour
+- `0.1.0 → 0.2.0` — new features, or anything that changes how existing settings
+  behave or are presented
+- `0.x → 1.0.0` — when the write path has been exercised on real hardware by
+  more than one person and the catalog is trusted
+
+### `Version` vs `Release`
+
+`Version` is the software, `Release` (the `-1` in `0.1.0-1.fc44`) is the
+packaging of it. For a spec-only fix, bump `Release:` in the spec directly. Note
+the release workflow keys on `v<VERSION>`, so a `Release`-only bump publishes no
+new GitHub Release — the tag already exists.
+
 ## Releasing
 
-1. Bump the version in `thinkpad-settings.spec` (`Version:` and `%changelog`),
-   `pyproject.toml`, `thinkpad_settings/app.py` and the `<release>` block in
-   `data/com.rabeei.ThinkPadSettings.metainfo.xml`. All four must agree.
-2. Merge to `main`.
-3. The release workflow builds the RPM and SRPM, creates the `v<version>` tag
-   and publishes a GitHub Release with both attached plus SHA-256 sums.
+1. `echo X.Y.Z > VERSION` on `dev`, commit, push.
+2. PR `dev` → `beta`, let it soak.
+3. PR `beta` → `main`. `main` is protected: the PR cannot merge until
+   **Build and test on Fedora** passes, and direct pushes are rejected.
+4. Merging publishes automatically — the workflow builds the RPM and SRPM,
+   creates the `v<version>` tag, and attaches both plus `SHA256SUMS`.
 
-If the tag already exists the workflow skips publishing, so re-pushing `main`
-without a version bump is harmless.
+Never create the `v*` tag by hand; the workflow owns it. If the tag already
+exists the workflow skips publishing, so re-merging to `main` without a version
+bump is a harmless no-op rather than a failed run.
+
+Publishing a release also triggers the **Publish dnf repository** workflow,
+which collects the RPMs from *every* release, rebuilds the repository metadata
+and deploys it to GitHub Pages. Older versions stay installable.
+
+### Signing
+
+Packages and repository metadata are signed with a dedicated key
+(`8B6BA518D0BDF62B4DAD665565BED405FED3678F`). Three repository secrets drive it:
+
+| Secret | |
+|---|---|
+| `GPG_PRIVATE_KEY` | ASCII-armoured private key |
+| `GPG_PASSPHRASE` | its passphrase |
+| `GPG_KEY_ID` | fingerprint passed to `rpmsign` |
+
+Both workflows **fail rather than publish unsigned artifacts** if the key is
+missing — an unsigned package that looks signed is worse than a failed release.
+The public half is committed at `data/RPM-GPG-KEY-thinkpad-settings` and served
+from the Pages site; if it is ever rotated, both must change together or every
+existing user's `dnf` will reject the repository.
+
+To test the repository locally without publishing:
+
+```
+sudo dnf install createrepo_c rpm-sign
+export GPG_KEY_ID=... GPG_PASSPHRASE_FILE=...
+./build-repo.sh ~/rpmbuild/RPMS/noarch /tmp/site "file:///tmp/site"
+```
+
+then point a `.repo` file at `file:///tmp/site/fedora/`.
 
 ## Style
 

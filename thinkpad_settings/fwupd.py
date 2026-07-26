@@ -17,11 +17,12 @@ handles the ``save_settings`` commit for us.
 
 from __future__ import annotations
 
+import contextlib
 import enum
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
-from gi.repository import Gio, GLib
+from gi.repository import Gio, GLib, GObject
 
 BUS_NAME = "org.freedesktop.fwupd"
 OBJECT_PATH = "/"
@@ -57,7 +58,9 @@ class Failure(enum.Enum):
     DENIED = "denied"  # polkit did not authorise: dismissed, wrong password or refused
     TIMEOUT = "timeout"  # no reply in time; the write may still have landed
     UNAVAILABLE = "unavailable"  # fwupd not running / not on the bus
-    REJECTED = "rejected"  # fwupd refused THIS request: bad value, read-only, unknown name
+    REJECTED = (
+        "rejected"  # fwupd refused THIS request: bad value, read-only, unknown name
+    )
     NOTHING_TO_DO = "nothing"  # every value already matched
     OTHER = "other"
 
@@ -73,7 +76,7 @@ _AUTH_ERRORS = {
 
 
 class FwupdError(Exception):
-    def __init__(self, kind: Failure, message: str):
+    def __init__(self, kind: Failure, message: str) -> None:
         super().__init__(message)
         self.kind = kind
         self.message = message
@@ -165,7 +168,10 @@ def _classify(error: GLib.Error) -> FwupdError:
     if remote == "org.freedesktop.fwupd.NothingToDo":
         return FwupdError(Failure.NOTHING_TO_DO, message)
 
-    if remote in ("org.freedesktop.fwupd.NotSupported", "org.freedesktop.fwupd.NotFound"):
+    if remote in (
+        "org.freedesktop.fwupd.NotSupported",
+        "org.freedesktop.fwupd.NotFound",
+    ):
         # Per-request refusals: an unknown attribute name, a value outside the
         # permitted list, or a read-only attribute. NOT a statement about the
         # machine's capabilities, so pass fwupd's own explanation through
@@ -179,23 +185,36 @@ def _classify(error: GLib.Error) -> FwupdError:
     return FwupdError(Failure.OTHER, message)
 
 
-def _parse(raw: list[dict]) -> list[BiosSetting]:
-    settings = []
+def _parse(raw: list[dict[str, object]]) -> list[BiosSetting]:
+    settings: list[BiosSetting] = []
     for item in raw:
+        # This is an a{sv} straight off the bus, so nothing about its shape is
+        # guaranteed. Check rather than assume: a malformed entry should be
+        # skipped, not crash the read or become a fabricated setting.
         name = item.get("Name")
-        if not name:
+        if not isinstance(name, str) or not name:
             continue
-        possible = item.get("BiosSettingPossibleValues") or ()
+
+        description = item.get("Description")
+        possible = item.get("BiosSettingPossibleValues")
+        setting_id = item.get("BiosSettingId")
+        path = item.get("Filename")
         raw_value = item.get(VALUE_KEY)
+
         settings.append(
             BiosSetting(
                 name=name,
-                description=item.get("Description") or name,
+                description=description if isinstance(description, str) else name,
                 current_value=None if raw_value is None else str(raw_value),
-                possible_values=tuple(possible),
+                possible_values=tuple(
+                    str(value)
+                    for value in (
+                        possible if isinstance(possible, (list, tuple)) else ()
+                    )
+                ),
                 read_only=bool(item.get("BiosSettingReadOnly", False)),
-                setting_id=item.get("BiosSettingId") or "",
-                path=item.get("Filename") or "",
+                setting_id=setting_id if isinstance(setting_id, str) else "",
+                path=path if isinstance(path, str) else "",
             )
         )
     settings.sort(key=lambda s: s.name)
@@ -237,13 +256,13 @@ class FwupdClient:
             back with the values quietly removed.
             """
 
-            def flagged(_source, result):
-                try:
+            def flagged(
+                _source: GObject.Object | None, result: Gio.AsyncResult
+            ) -> None:
+                # Older daemons may not know the call. Carry on: the
+                # redaction check in get_settings catches the consequence.
+                with contextlib.suppress(GLib.Error):
                     bus.call_finish(result)
-                except GLib.Error:
-                    # Older daemons may not know the call. Carry on: the
-                    # redaction check in get_settings catches the consequence.
-                    pass
                 self._announced = True
                 on_ready(bus)
 
@@ -264,7 +283,7 @@ class FwupdClient:
             announce(self._bus)
             return
 
-        def finished(_source, result):
+        def finished(_source: GObject.Object | None, result: Gio.AsyncResult) -> None:
             try:
                 self._bus = Gio.bus_get_finish(result)
             except GLib.Error as exc:
@@ -284,7 +303,9 @@ class FwupdClient:
         """Fetch every firmware attribute. Prompts for auth once per session."""
 
         def call(bus: Gio.DBusConnection) -> None:
-            def finished(_source, result):
+            def finished(
+                _source: GObject.Object | None, result: Gio.AsyncResult
+            ) -> None:
                 try:
                     reply = bus.call_finish(result)
                 except GLib.Error as exc:
@@ -337,7 +358,9 @@ class FwupdClient:
             return
 
         def call(bus: Gio.DBusConnection) -> None:
-            def finished(_source, result):
+            def finished(
+                _source: GObject.Object | None, result: Gio.AsyncResult
+            ) -> None:
                 try:
                     bus.call_finish(result)
                 except GLib.Error as exc:

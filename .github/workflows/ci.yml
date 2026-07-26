@@ -7,6 +7,50 @@ on:
   workflow_dispatch:
 
 jobs:
+  lint:
+    name: Lint and typecheck
+    runs-on: ubuntu-latest
+    container: fedora:44
+
+    steps:
+      - name: Install toolchain
+        run: |
+          dnf install -y --setopt=install_weak_deps=False \
+            git-core python3-devel ShellCheck \
+            python3-gobject python3-cairo gobject-introspection gtk4 libadwaita
+
+      - uses: actions/checkout@v7
+
+      - name: Mark workspace safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - uses: astral-sh/setup-uv@v9.0.0
+        with:
+          enable-cache: true
+
+      # --system-site-packages so the venv can see the distro PyGObject the
+      # tests import; --locked so a stale uv.lock fails the build instead of
+      # silently resolving something different from what was reviewed.
+      - name: Install checkers
+        run: |
+          uv venv --system-site-packages
+          uv sync --locked
+
+      - name: ruff (lint)
+        run: uv run ruff check thinkpad_settings tests
+
+      - name: ruff (format)
+        run: uv run ruff format --check thinkpad_settings tests
+
+      - name: mypy (strict)
+        run: uv run mypy thinkpad_settings tests
+
+      - name: pyrefly
+        run: uv run pyrefly check
+
+      - name: shellcheck
+        run: shellcheck ./*.sh
+
   build:
     name: Build and test on Fedora
     runs-on: ubuntu-latest
@@ -32,7 +76,7 @@ jobs:
             python3-gobject python3-cairo gobject-introspection \
             gtk4 libadwaita xorg-x11-server-Xvfb
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Mark workspace safe for git
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -101,7 +145,7 @@ jobs:
             print('installed at', os.path.dirname(thinkpad_settings.__file__))")
           dnf remove -y thinkpad-settings
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: rpm-${{ github.sha }}
           path: dist/

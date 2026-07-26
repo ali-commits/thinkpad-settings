@@ -35,7 +35,22 @@ the exact attribute name *and* the exact spelling of the value.
 
 ## Install
 
-### RPM (Fedora)
+### dnf repository (recommended)
+
+```
+sudo dnf config-manager addrepo --from-repofile=https://ali-commits.github.io/thinkpad-settings/thinkpad-settings.repo
+sudo dnf install thinkpad-settings
+```
+
+Updates then arrive through `dnf upgrade` like any other package. Packages and
+repository metadata are both GPG-signed; dnf imports the key on first install.
+Fingerprint:
+
+```
+8B6B A518 D0BD F62B 4DAD  6655 65BE D405 FED3 678F
+```
+
+### Single package
 
 Download the `.rpm` from [Releases](https://github.com/ali-commits/thinkpad-settings/releases), then:
 
@@ -45,6 +60,7 @@ sudo dnf install ./thinkpad-settings-*.noarch.rpm
 
 Dependencies resolve through dnf, the launcher appears in Activities, and
 `man thinkpad-settings` works. Remove it with `sudo dnf remove thinkpad-settings`.
+There is no automatic upgrade path this way.
 
 ### Build the RPM yourself
 

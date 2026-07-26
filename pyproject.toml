@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thinkpad-settings"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Edit ThinkPad firmware (BIOS) settings from the desktop"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 keywords = ["thinkpad", "lenovo", "bios", "uefi", "firmware", "fwupd", "gtk4"]
@@ -27,8 +27,99 @@ classifiers = [
 [project.gui-scripts]
 thinkpad-settings = "thinkpad_settings.app:main"
 
+[dependency-groups]
+dev = [
+    "ruff>=0.16.0",
+    "mypy>=2.3.0",
+    "pyrefly>=1.1.1",
+    "pre-commit>=4.6.1",
+    "pygobject-stubs>=2.17.0",
+]
+
+[tool.uv]
+# pygobject-stubs declares a runtime dependency on PyGObject, which drags in
+# pycairo and tries to compile it from source (needs cairo-devel and a C
+# toolchain). The stubs are type-only, and the real PyGObject comes from the
+# distro package the app runs against, so the dependency is dropped here.
+override-dependencies = ["pygobject; sys_platform == 'never'"]
+
 [tool.setuptools]
 packages = ["thinkpad_settings"]
 
+# VERSION is the single source of truth; pyproject and the About dialog both
+# derive from it so neither can drift. The RPM spec cannot: rpmbuild parses the
+# spec before it unpacks Source0, so its Version: is written by bump-version.sh
+# and checked by CI.
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
+
 [tool.setuptools.package-data]
 thinkpad_settings = ["metadata.json"]
+
+# ---------------------------------------------------------------------------
+# Linting and formatting
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+extend-exclude = [".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = [
+    "F",    # pyflakes
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "I",    # import sorting
+    "N",    # pep8 naming
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "A",    # shadowed builtins
+    "C4",   # comprehensions
+    "SIM",  # simplifications
+    "RET",  # return statements
+    "PTH",  # prefer pathlib
+    "ARG",  # unused arguments
+    "RUF",  # ruff's own rules
+    "ANN",  # missing annotations
+    "TID",  # tidy imports
+    "PIE",
+    "PL",   # pylint subset
+]
+ignore = [
+    # GTK callbacks legitimately take positional args they ignore; the widget
+    # and pspec parameters are dictated by the signal signature, not by us.
+    "ARG001",
+    "ARG002",
+    # Line-ending-in-comment noise from the deliberately prose-style comments.
+    "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The test script is a linear narrative, not a library: it uses long literal
+# tables and reaches into private members on purpose.
+"tests/*" = ["PLR0915", "PLR0912", "PLR2004", "ANN", "SLF001", "E402", "PLC0415"]
+
+[tool.ruff.lint.pylint]
+max-args = 8
+max-branches = 15
+max-statements = 60
+# _classify is a flat dispatch over fwupd's error taxonomy; collapsing its
+# returns into nested branches would make it harder to read, not easier.
+max-returns = 10
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+warn_no_return = true
+show_error_codes = true
+exclude = ['^\.venv/', '^build/', '^dist/']
+
+[tool.pyrefly]
+project-includes = ["thinkpad_settings", "tests"]
+project-excludes = ["**/.venv/**", "**/build/**", "**/dist/**"]
+python-version = "3.10"

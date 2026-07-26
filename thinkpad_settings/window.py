@@ -25,9 +25,24 @@ _STYLE = """
 """
 
 
+class CategoryRow(Adw.ActionRow):
+    """Sidebar row that remembers which category it selects.
+
+    A subclass rather than an attribute bolted onto Adw.ActionRow: attaching
+    arbitrary Python attributes to a GObject works at runtime but is invisible
+    to the type checker and silently breaks if the widget is ever recreated.
+    """
+
+    def __init__(self, category: str, subtitle: str) -> None:
+        super().__init__(subtitle=subtitle)
+        self.category = category
+        self.set_use_markup(False)
+        self.set_title(category)
+
+
 class MainWindow(Adw.ApplicationWindow):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, *, application: Adw.Application) -> None:
+        super().__init__(application=application)
 
         self.set_title("ThinkPad BIOS Settings")
         self.set_default_size(1000, 720)
@@ -37,6 +52,9 @@ class MainWindow(Adw.ApplicationWindow):
         self._settings: list[BiosSetting] = []
         self._by_name: dict[str, BiosSetting] = {}
         self._staged: dict[str, str] = {}
+        # Keyed by setting name rather than attached to the widgets, so a
+        # pane rebuild cannot leave a stale badge behind.
+        self._badges: dict[str, Gtk.Widget] = {}
         self._category = ""
         self._search = ""
         # True from the moment SetBiosSettings is dispatched until it returns,
@@ -123,9 +141,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._content_title = Adw.WindowTitle(title="ThinkPad BIOS Settings")
         header = Adw.HeaderBar(title_widget=self._content_title)
-        header.pack_end(
-            Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu)
-        )
+        header.pack_end(Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu))
         header.pack_end(self._search_button)
 
         self._banner = Adw.Banner(revealed=False)
@@ -295,11 +311,8 @@ class MainWindow(Adw.ApplicationWindow):
             count = sum(
                 1 for s in self._settings if metadata.get(s.name).category == category
             )
-            row = Adw.ActionRow(subtitle=f"{count} settings")
-            row.set_use_markup(False)
-            row.set_title(category)
+            row = CategoryRow(category, f"{count} settings")
             row.add_prefix(Gtk.Image.new_from_icon_name(self._icon_for(category)))
-            row.category = category
             self._sidebar_list.append(row)
             if category == self._category:
                 selected_row = row
@@ -309,8 +322,10 @@ class MainWindow(Adw.ApplicationWindow):
             self._sidebar_list.select_row(selected_row)
         self._building = False
 
-    def _on_category_selected(self, _list, row) -> None:
-        if self._building or row is None:
+    def _on_category_selected(
+        self, _list: Gtk.ListBox, row: Gtk.ListBoxRow | None
+    ) -> None:
+        if self._building or not isinstance(row, CategoryRow):
             return
         self._category = row.category
         if self._search:
@@ -346,6 +361,7 @@ class MainWindow(Adw.ApplicationWindow):
         # view jumps back to the top after every arrow click.
         offset = self._scroll.get_vadjustment().get_value() if keep_scroll else 0.0
 
+        self._badges.clear()
         self._building = True
         try:
             page = Adw.PreferencesPage()
@@ -399,7 +415,9 @@ class MainWindow(Adw.ApplicationWindow):
 
             GLib.idle_add(restore)
 
-    def _group(self, title: str | None, settings: list[BiosSetting]) -> Adw.PreferencesGroup:
+    def _group(
+        self, title: str | None, settings: list[BiosSetting]
+    ) -> Adw.PreferencesGroup:
         group = Adw.PreferencesGroup()
         if title:
             # PreferencesGroup has no use-markup toggle, so escape instead.
@@ -421,7 +439,12 @@ class MainWindow(Adw.ApplicationWindow):
             return self._switch_row(setting, meta)
         return self._combo_row(setting, meta)
 
-    def _decorate(self, row: Adw.PreferencesRow, setting: BiosSetting, meta) -> None:
+    def _decorate(
+        self,
+        row: Adw.ActionRow,
+        setting: BiosSetting,
+        meta: metadata.SettingMeta,
+    ) -> None:
         """Attach the description, risk marker and staged badge to a row."""
         # Row titles and subtitles are parsed as Pango markup by default, and
         # both category names and descriptions contain bare ampersands. Turning
@@ -441,18 +464,26 @@ class MainWindow(Adw.ApplicationWindow):
             icon.set_tooltip_text(meta.risk_note or "Changing this can lock you out.")
             row.add_prefix(icon)
 
+        self._add_badge(row, setting)
+
+    def _add_badge(
+        self, row: Adw.ActionRow | Adw.EntryRow | Adw.ExpanderRow, setting: BiosSetting
+    ) -> None:
         badge = Gtk.Label(label="changed", valign=Gtk.Align.CENTER)
         badge.add_css_class("staged-badge")
         badge.set_visible(setting.name in self._staged)
         row.add_suffix(badge)
-        row.staged_badge = badge
+        self._badges[setting.name] = badge
 
-    def _readonly_row(self, setting: BiosSetting, meta) -> Adw.ActionRow:
+    def _readonly_row(
+        self, setting: BiosSetting, meta: metadata.SettingMeta
+    ) -> Adw.ActionRow:
         row = Adw.ActionRow()
         self._decorate(row, setting, meta)
 
-        if setting.disclosed:
-            shown = meta.label_for(setting.current_value)
+        current = setting.current_value
+        if current is not None:
+            shown = meta.label_for(current)
             reason = (
                 "Your firmware reports this as read-only. Change it in BIOS "
                 "setup by pressing F1 during startup."
@@ -473,49 +504,53 @@ class MainWindow(Adw.ApplicationWindow):
         row.add_suffix(lock)
         return row
 
-    def _switch_row(self, setting: BiosSetting, meta) -> Adw.SwitchRow:
+    def _switch_row(
+        self, setting: BiosSetting, meta: metadata.SettingMeta
+    ) -> Adw.SwitchRow:
         row = Adw.SwitchRow()
         self._decorate(row, setting, meta)
         row.set_active(self._value_of(setting) == _ON)
 
-        def changed(widget, _param):
+        def changed(widget: Adw.SwitchRow, _param: GObject.ParamSpec) -> None:
             if self._building:
                 return
-            self._stage(setting, _ON if widget.get_active() else _OFF, row)
+            self._stage(setting, _ON if widget.get_active() else _OFF)
 
         row.connect("notify::active", changed)
         return row
 
-    def _combo_row(self, setting: BiosSetting, meta) -> Adw.ComboRow:
+    def _combo_row(
+        self, setting: BiosSetting, meta: metadata.SettingMeta
+    ) -> Adw.ComboRow:
         values = list(setting.possible_values)
         row = Adw.ComboRow()
         self._decorate(row, setting, meta)
         row.set_model(Gtk.StringList.new([meta.label_for(v) for v in values]))
 
         current = self._value_of(setting)
-        row.set_selected(values.index(current) if current in values else Gtk.INVALID_LIST_POSITION)
+        row.set_selected(
+            values.index(current) if current in values else Gtk.INVALID_LIST_POSITION
+        )
 
-        def changed(widget, _param):
+        def changed(widget: Adw.ComboRow, _param: GObject.ParamSpec) -> None:
             if self._building:
                 return
             index = widget.get_selected()
             if 0 <= index < len(values):
-                self._stage(setting, values[index], row)
+                self._stage(setting, values[index])
 
         row.connect("notify::selected", changed)
         return row
 
-    def _text_row(self, setting: BiosSetting, meta) -> Adw.EntryRow:
+    def _text_row(
+        self, setting: BiosSetting, meta: metadata.SettingMeta
+    ) -> Adw.EntryRow:
         row = Adw.EntryRow()
         row.set_use_markup(False)
         row.set_title(meta.label)
         row.set_text(self._value_of(setting))
 
-        badge = Gtk.Label(label="changed", valign=Gtk.Align.CENTER)
-        badge.add_css_class("staged-badge")
-        badge.set_visible(setting.name in self._staged)
-        row.add_suffix(badge)
-        row.staged_badge = badge
+        self._add_badge(row, setting)
 
         # Adw.EntryRow has no subtitle, so the description that every other row
         # shows inline has to travel as a tooltip here.
@@ -531,15 +566,17 @@ class MainWindow(Adw.ApplicationWindow):
             icon.set_tooltip_text(meta.risk_note or "Changing this can lock you out.")
             row.add_prefix(icon)
 
-        def changed(widget):
+        def changed(widget: Adw.EntryRow) -> None:
             if self._building:
                 return
-            self._stage(setting, widget.get_text(), row)
+            self._stage(setting, widget.get_text())
 
         row.connect("changed", changed)
         return row
 
-    def _boot_order_row(self, setting: BiosSetting, meta) -> Adw.ExpanderRow:
+    def _boot_order_row(
+        self, setting: BiosSetting, meta: metadata.SettingMeta
+    ) -> Adw.ExpanderRow:
         """Read-only view of the boot order.
 
         This cannot be an editor. fwupd validates a written value against the
@@ -567,7 +604,9 @@ class MainWindow(Adw.ApplicationWindow):
         row.set_subtitle_lines(0)
         row.set_expanded(bool(self._boot_expanded))
 
-        def remember_expanded(widget, _param):
+        def remember_expanded(
+            widget: Adw.ExpanderRow, _param: GObject.ParamSpec
+        ) -> None:
             if not self._building:
                 self._boot_expanded = widget.get_expanded()
 
@@ -612,13 +651,13 @@ class MainWindow(Adw.ApplicationWindow):
         # they are never editable, so the empty string is display-only.
         return setting.current_value or ""
 
-    def _stage(self, setting: BiosSetting, value: str, row) -> None:
+    def _stage(self, setting: BiosSetting, value: str) -> None:
         if value == setting.current_value:
             self._staged.pop(setting.name, None)
         else:
             self._staged[setting.name] = value
 
-        badge = getattr(row, "staged_badge", None)
+        badge = self._badges.get(setting.name)
         if badge is not None:
             badge.set_visible(setting.name in self._staged)
         self._update_apply_bar()
@@ -759,7 +798,7 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.set_default_response("cancel")
         dialog.set_close_response("cancel")
 
-        def answered(source, result):
+        def answered(source: Adw.AlertDialog, result: Gio.AsyncResult) -> None:
             if source.choose_finish(result) == "apply":
                 self._apply()
 
@@ -839,7 +878,7 @@ class MainWindow(Adw.ApplicationWindow):
         toast.set_use_markup(False)
         self._toasts.add_toast(toast)
 
-    def _on_banner_clicked(self, _banner) -> None:
+    def _on_banner_clicked(self, _banner: Adw.Banner) -> None:
         dialog = Adw.AlertDialog(
             heading="Restart now?",
             body="Close your work first. Firmware changes apply during startup.",
@@ -850,7 +889,7 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.set_default_response("cancel")
         dialog.set_close_response("cancel")
 
-        def answered(source, result):
+        def answered(source: Adw.AlertDialog, result: Gio.AsyncResult) -> None:
             if source.choose_finish(result) == "restart":
                 self._reboot()
 
@@ -874,7 +913,7 @@ class MainWindow(Adw.ApplicationWindow):
         except GLib.Error as exc:
             self._toast(f"Could not restart: {exc.message}")
 
-    def _on_close_request(self, *_args) -> bool:
+    def _on_close_request(self, *_args: object) -> bool:
         if self._writing:
             # The write is already with fwupd. Closing cannot recall it, so do
             # not offer to "discard" anything or claim nothing has changed.
@@ -892,7 +931,9 @@ class MainWindow(Adw.ApplicationWindow):
             dialog.set_default_response("stay")
             dialog.set_close_response("stay")
 
-            def answered_write(source, result):
+            def answered_write(
+                source: Adw.AlertDialog, result: Gio.AsyncResult
+            ) -> None:
                 if source.choose_finish(result) == "close":
                     self.destroy()
 
@@ -918,7 +959,7 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.set_default_response("stay")
         dialog.set_close_response("stay")
 
-        def answered(source, result):
+        def answered(source: Adw.AlertDialog, result: Gio.AsyncResult) -> None:
             if source.choose_finish(result) == "discard":
                 self._staged.clear()
                 self._client.cancel()
